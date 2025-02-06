@@ -49,7 +49,7 @@ def _run_one_epoch(is_training: bool,
 
     lr = optimizer.param_groups[0]['lr']
     _logger.info(f"{phase.upper()} start, epoch={epoch:04d}, lr={lr:.6f}")
-
+    
     for time_cost, iter_, (inputs, targets) in time_enumerate(loader, start=1):
         inputs = inputs.to(device=device, non_blocking=True, memory_format=memory_format)
         targets = targets.to(device=device, non_blocking=True)
