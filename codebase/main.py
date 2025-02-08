@@ -1,7 +1,8 @@
 import logging
 import dataclasses
 import pprint
-
+import wandb
+import yaml
 import torch
 from torch import optim
 import torch.cuda
@@ -75,9 +76,10 @@ def excute_pipeline(
             loader=val_loader,
             **kwargs
         )
-
-        for name, metric in metric_store.get_last_metrics().items():
-            writer.add_scalar(name, metric, epoch)
+        # using wandb to log, comment out the original usage of tensorboard writer
+        wandb.log(metric_store.get_last_metrics()) 
+        # for name, metric in metric_store.get_last_metrics().items():
+        #     writer.add_scalar(name, metric, epoch)
 
         state_ckpt.save(metric_store=metric_store, states=states)
 
@@ -176,7 +178,12 @@ def main_worker(local_rank: int,
                 ngpus_per_node: int,
                 args: Args,
                 conf: ConfigTree):
+# load the config file
+    with open('output.yaml') as file:
+        config = yaml.safe_load(file)
 
+# Initialize wandb with the loaded config
+    wandb.init(config=config,project="test")
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
 
     model, train_loader, val_loader, criterion, optimizer, \
