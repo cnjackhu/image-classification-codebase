@@ -3,6 +3,7 @@ import dataclasses
 import pprint
 import wandb
 import yaml
+import subprocess
 import torch
 from torch import optim
 import torch.cuda
@@ -11,7 +12,7 @@ import torch.nn as nn
 import torch.multiprocessing as mp
 from torch.utils.collect_env import get_pretty_env_info
 from torch.utils.tensorboard import SummaryWriter
-from pyhocon import ConfigTree
+from pyhocon import ConfigTree,ConfigFactory
 
 from codebase.config import Args
 from codebase.data import DATA
@@ -39,6 +40,8 @@ _logger = logging.getLogger(__name__)
 
 def excute_pipeline(
     only_evaluate: bool,
+    reg: int,
+    lamb: float,
     start_epoch: int,
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
@@ -66,12 +69,16 @@ def excute_pipeline(
                 val_loader.sampler.set_epoch(epoch)
 
         metric_store += train_one_epoch(
+            reg=reg,
+            lamb=lamb,
             epoch=epoch,
             loader=train_loader,
             **kwargs
         )
 
         metric_store += evaluate_one_epoch(
+            reg=reg,
+            lamb=lamb,
             epoch=epoch,
             loader=val_loader,
             **kwargs
@@ -181,17 +188,28 @@ def main_worker(local_rank: int,
 # load the config file
     with open('output.yaml') as file:
         config = yaml.safe_load(file)
-
+        # Build the command as a list of arguments.
+    cmd = [
+        "pyhocon",   # the command
+        "-f", "yaml",  # format option: output as YAML
+        "-i", "conf/cifar10.conf",  # input file
+        "-o", "cifar10.yaml"  # output file
+    ]
+    subprocess.run(cmd)
+    with open('cifar10.yaml') as file:
+        config = yaml.safe_load(file)
 # Initialize wandb with the loaded config
-    wandb.init(config=config,project="test")
+    wandb.init(config=config,project="test",entity='jackhu0119')
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
 
     model, train_loader, val_loader, criterion, optimizer, \
         scheduler, saver, writer, metric_store, states = \
         prepare_for_training(conf, args.output_dir, local_rank)
-
+    
     excute_pipeline(
         only_evaluate=conf.get_bool("only_evaluate"),
+        reg = conf.get_int("reg"),
+        lamb = conf.get_float("lamb"),
         start_epoch=metric_store.total_epoch,
         max_epochs=conf.get_int("max_epochs"),
         train_loader=train_loader,
