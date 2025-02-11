@@ -2,6 +2,8 @@ import logging
 import dataclasses
 import pprint
 import wandb
+import pathlib
+import re
 import yaml
 import subprocess
 import torch
@@ -185,9 +187,7 @@ def main_worker(local_rank: int,
                 ngpus_per_node: int,
                 args: Args,
                 conf: ConfigTree):
-# load the config file
-    with open('output.yaml') as file:
-        config = yaml.safe_load(file)
+
         # Build the command as a list of arguments.
     cmd = [
         "pyhocon",   # the command
@@ -198,10 +198,16 @@ def main_worker(local_rank: int,
     subprocess.run(cmd)
     with open('cifar10.yaml') as file:
         config = yaml.safe_load(file)
-# Initialize wandb with the loaded config
-    wandb.init(config=config,project="test",entity='jackhu0119')
+    # Initialize wandb with the loaded config
+    wandb.init(config=config,tags=[compile])
+    # change some config value
+    conf.put('model.name', wandb.config.sweep_model)
+    model_name = re.sub(r'^cifar(10|100)_', '', wandb.config.sweep_model)
+    #args.output_dir = pathlib.Path("output/cifar10")/model_name
+    args.output_dir = args.output_dir/model_name
+    args.output_dir.mkdir(parents=True, exist_ok=True)
+    
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
-
     model, train_loader, val_loader, criterion, optimizer, \
         scheduler, saver, writer, metric_store, states = \
         prepare_for_training(conf, args.output_dir, local_rank)
@@ -231,6 +237,12 @@ def main_worker(local_rank: int,
 
 
 def main(args: Args):
+    
+
+    # Initialize sweep by passing in config.
+    # (Optional) Provide a name of the project.
+    #sweep_id = wandb.sweep(sweep=sweep_configuration, project="my-sweep")
+    
     distributed = args.world_size > 1
     ngpus_per_node = torch.cuda.device_count()
     if distributed:
@@ -238,3 +250,7 @@ def main(args: Args):
     else:
         local_rank = 0
         main_worker(local_rank, ngpus_per_node, args, args.conf)
+        # Wrap main_worker in a lambda, providing the necessary arguments.
+        # wrapped_main_worker = lambda: main_worker(local_rank, ngpus_per_node, args, args.conf)
+        #  # Start sweep job.
+        # wandb.agent(sweep_id, function=wrapped_main_worker, count=100)

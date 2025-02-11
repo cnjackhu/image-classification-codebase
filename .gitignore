@@ -5,9 +5,9 @@
 # for the current folder
 wandb
 data
-
-
-
+dcgm
+wandb_test
+example.ipynb
 
 ### Code ###
 .vscode/*
