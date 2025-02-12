@@ -4,8 +4,7 @@ import pprint
 import wandb
 import pathlib
 import re
-import yaml
-import subprocess
+import json
 import torch
 from torch import optim
 import torch.cuda
@@ -14,7 +13,7 @@ import torch.nn as nn
 import torch.multiprocessing as mp
 from torch.utils.collect_env import get_pretty_env_info
 from torch.utils.tensorboard import SummaryWriter
-from pyhocon import ConfigTree,ConfigFactory
+from pyhocon import ConfigTree,ConfigFactory,HOCONConverter
 
 from codebase.config import Args
 from codebase.data import DATA
@@ -188,22 +187,15 @@ def main_worker(local_rank: int,
                 args: Args,
                 conf: ConfigTree):
 
-        # Build the command as a list of arguments.
-    cmd = [
-        "pyhocon",   # the command
-        "-f", "yaml",  # format option: output as YAML
-        "-i", "conf/cifar10.conf",  # input file
-        "-o", "cifar10.yaml"  # output file
-    ]
-    subprocess.run(cmd)
-    with open('cifar10.yaml') as file:
-        config = yaml.safe_load(file)
-    # Initialize wandb with the loaded config
-    wandb.init(config=config,tags=[compile])
-    # change some config value
+    config = json.loads(HOCONConverter.convert(conf, 'json'))
+    # Initialize wandb 
+    #breakpoint()
+    run=wandb.init(config=config,tags=["delete"])
+    
+
+    # set output_dir
     conf.put('model.name', wandb.config.sweep_model)
     model_name = re.sub(r'^cifar(10|100)_', '', wandb.config.sweep_model)
-    #args.output_dir = pathlib.Path("output/cifar10")/model_name
     args.output_dir = args.output_dir/model_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
     
