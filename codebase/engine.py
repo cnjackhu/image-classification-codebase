@@ -3,6 +3,7 @@ import logging
 from ratefunctiontorch import OnlineCumulant, RateCumulant
 from regularizers import compute_regularizer
 import torch
+import torch.nn.functional as F
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
@@ -40,11 +41,11 @@ def _run_one_epoch(is_training: bool,
         scaler = GradScaler(enabled=use_amp and is_training)
 
     gradident_accumulator = GradientAccumulator(steps=accmulated_steps, enabled=is_training)
-    if not is_training:
-        ece_metric = AverageMetric("ece")
-        mce_metric = AverageMetric("mce")
-        ece = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='l1')
-        mce = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='max')
+    
+    ece_metric = AverageMetric("ece")
+    mce_metric = AverageMetric("mce")
+    ece = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='l1')
+    mce = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='max')
 
     time_cost_metric = AverageMetric("time_cost")
     loss_metric = AverageMetric("loss")
@@ -78,41 +79,40 @@ def _run_one_epoch(is_training: bool,
                 outputs = model(inputs)
                 if is_training and reg > 0:
                     train_losses = criterion(outputs, targets)
+                    train_onlinecumulant.update_losses(train_losses.clone().to(device))
+                    # Calculate regularizer and batch loss
+                    if reg == 3:
+                        regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=0.0)
+                    elif reg == 4:
+                        regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=1.0)
+                    elif reg == 5:
+                        regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=0.5)
+                    elif reg == 6:
+                        s = torch.tensor(lamb, dtype=torch.float32, device=device)
+                        _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(s, return_lambdas=True)
+                        lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.01)
+                        regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
+                    loss = batch_loss + regularizer
+                    loss_metric_value = torch.mean(train_losses).item()
                 else:
                     loss = criterion(outputs, targets)
-
-        # Handle regularizer and loss calculation for training with reg > 0
-        if is_training and reg > 0:
-            # Update online cumulant
-            train_onlinecumulant.update_losses(train_losses.clone().to(device))
-            
-            # Calculate regularizer and batch loss
-            if reg == 3:
-                regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=0.0)
-            elif reg == 4:
-                regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=1.0)
-            elif reg == 5:
-                regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=0.5)
-            elif reg == 6:
-                s = torch.tensor(lamb, dtype=torch.float32, device=device)
-                _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(s, return_lambdas=True)
-                lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.01)
-                regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
-            
-            loss = batch_loss + regularizer
-            loss_metric_value = torch.mean(train_losses)
-        else:
-            loss_metric_value = loss
+                    loss_metric_value = loss.item()
 
         # Backward pass and optimization
         gradident_accumulator.backward_step(model, loss, optimizer, scaler)
-
+        # caculate calibration error
+        probs = F.softmax(outputs.detach(), dim=1)
+        ece_ = ece(probs, targets).item()
+        mce_ = mce(probs, targets).item()
+        
         # Update metrics
         time_cost_metric.update(time_cost)
         accuracy_metric.update(outputs, targets)
         loss_metric.update(loss_metric_value)
         eta.step()
         speed_tester.update(inputs)
+        ece_metric.update(ece_)
+        mce_metric.update(mce_)
 
         # Logging
         if iter_ % log_interval == 0 or iter_ == len(loader):
@@ -134,12 +134,15 @@ def _run_one_epoch(is_training: bool,
         phase.upper(),
         f"epoch={epoch:04d} {phase} complete",
         f"{loss_metric}",
-        f"{accuracy_metric}",
+        f"{ece_metric}",
+        f"{mce_metric}",
     ]))
 
     return {
         f"{phase}/lr": lr,
         f"{phase}/loss": loss_metric.compute(),
+        f"{phase}/ece": ece_metric.compute(),
+        f"{phase}/mce": mce_metric.compute(),
         f"{phase}/top1_acc": accuracy_metric.at(1).rate,
         f"{phase}/top5_acc": accuracy_metric.at(5).rate,
     }
