@@ -12,9 +12,8 @@ import torch.utils.data
 import torch.nn as nn
 import torch.multiprocessing as mp
 from torch.utils.collect_env import get_pretty_env_info
-from torch.utils.tensorboard import SummaryWriter
-from pyhocon import ConfigTree,ConfigFactory,HOCONConverter
 
+from pyhocon import ConfigTree,HOCONConverter
 from codebase.config import Args
 from codebase.data import DATA
 from codebase.models import MODEL
@@ -47,7 +46,6 @@ def excute_pipeline(
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
-    writer: SummaryWriter,
     state_ckpt: StateCheckPoint,
     states: dict,
     metric_store: MetricsStore,
@@ -84,10 +82,8 @@ def excute_pipeline(
             loader=val_loader,
             **kwargs
         )
-        # using wandb to log, comment out the original usage of tensorboard writer
+        # using wandb to log, 
         wandb.log(metric_store.get_last_metrics()) 
-        # for name, metric in metric_store.get_last_metrics().items():
-        #     writer.add_scalar(name, metric, epoch)
 
         state_ckpt.save(metric_store=metric_store, states=states)
 
@@ -141,7 +137,7 @@ def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
     # _logger.info(f"Model details: n_params={compute_nparam(model)/1e6:.2f}M, "
     #              f"flops={compute_flops(model,(1,3, image_size, image_size))/1e6:.2f}M.")
 
-    writer = only_master(SummaryWriter(output_dir))
+   
 
     metric_store = MetricsStore(dominant_metric_name="eval/top1_acc")
     states = dict(model=unwarp_module(model), optimizer=optimizer, scheduler=scheduler)
@@ -153,7 +149,7 @@ def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
         model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
 
     return model, train_loader, val_loader, criterion, optimizer, scheduler, \
-        state_ckpt, writer, metric_store, states
+        state_ckpt,  metric_store, states
 
 
 def _init(local_rank: int, ngpus_per_node: int, args: Args):
@@ -189,19 +185,19 @@ def main_worker(local_rank: int,
 
     config = json.loads(HOCONConverter.convert(conf, 'json'))
     # Initialize wandb 
-    #breakpoint()
-    run=wandb.init(config=config,tags=["delete"])
-    
-
-    # set output_dir
+    keys=[ 'reg', 'lamb']
+    run=wandb.init(config=config,config_include_keys=keys)
+    # get model name
     conf.put('model.name', wandb.config.sweep_model)
     model_name = re.sub(r'^cifar(10|100)_', '', wandb.config.sweep_model)
+    # set output_dir
     args.output_dir = args.output_dir/model_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    
+    # rename wandb run name
+    wandb.run.name = model_name
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     model, train_loader, val_loader, criterion, optimizer, \
-        scheduler, saver, writer, metric_store, states = \
+        scheduler, saver,  metric_store, states = \
         prepare_for_training(conf, args.output_dir, local_rank)
     
     excute_pipeline(
@@ -212,7 +208,6 @@ def main_worker(local_rank: int,
         max_epochs=conf.get_int("max_epochs"),
         train_loader=train_loader,
         val_loader=val_loader,
-        writer=writer,
         state_ckpt=saver,
         states=states,
         metric_store=metric_store,
@@ -242,7 +237,4 @@ def main(args: Args):
     else:
         local_rank = 0
         main_worker(local_rank, ngpus_per_node, args, args.conf)
-        # Wrap main_worker in a lambda, providing the necessary arguments.
-        # wrapped_main_worker = lambda: main_worker(local_rank, ngpus_per_node, args, args.conf)
-        #  # Start sweep job.
-        # wandb.agent(sweep_id, function=wrapped_main_worker, count=100)
+
