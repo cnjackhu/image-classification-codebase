@@ -193,8 +193,9 @@ def main_worker(local_rank: int,
     # set output_dir
     args.output_dir = args.output_dir/model_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    # rename wandb run name
+    # rename wandb run name and run tags
     wandb.run.name = model_name
+    wandb.run.tags= [model_name]
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     model, train_loader, val_loader, criterion, optimizer, \
         scheduler, saver,  metric_store, states = \
