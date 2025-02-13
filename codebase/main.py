@@ -194,7 +194,11 @@ def main_worker(local_rank: int,
     args.output_dir = args.output_dir/model_name
     args.output_dir.mkdir(parents=True, exist_ok=True)
     # rename wandb run name and run tags
-    wandb.run.name = model_name
+    config_dict = dict(wandb.run.config) 
+    if config_dict['reg'] == 0:
+        hyper_name="baseline"
+    hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in keys)
+    wandb.run.name = model_name + "-"+ hyper_name
     wandb.run.tags= [model_name]
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     model, train_loader, val_loader, criterion, optimizer, \
