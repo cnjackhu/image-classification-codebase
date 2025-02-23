@@ -134,6 +134,7 @@ def _run_one_epoch(is_training: bool,
         phase.upper(),
         f"epoch={epoch:04d} {phase} complete",
         f"{loss_metric}",
+        f"{accuracy_metric}",
         f"{ece_metric}",
         f"{mce_metric}",
     ]))
