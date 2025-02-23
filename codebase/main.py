@@ -163,13 +163,15 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
         _logger.info("-"*30+"Resume from the last training checkpoints."+"-"*30)
 
     if set_reproducible:
-        set_reproducible(generate_random_seed())
+        #random_seed = generate_random_seed()
+        random_seed = 10
+        set_reproducible(random_seed)
     else:
         set_cudnn_auto_tune()
         disable_debug_api()
 
-    create_code_snapshot(name="code", include_suffix=[".py", ".conf"],
-                         source_directory=".", store_directory=args.output_dir)
+    # create_code_snapshot(name="code", include_suffix=[".py", ".conf"],
+    #                      source_directory=".", store_directory=args.output_dir)
 
     _logger.info("Collect envs from system:\n" + get_pretty_env_info())
     _logger.info("Args:\n" + pprint.pformat(dataclasses.asdict(args)))
@@ -190,16 +192,17 @@ def main_worker(local_rank: int,
     # get model name
     conf.put('model.name', wandb.config.sweep_model)
     model_name = re.sub(r'^cifar(10|100)_', '', wandb.config.sweep_model)
-    # set output_dir
-    args.output_dir = args.output_dir/model_name
-    args.output_dir.mkdir(parents=True, exist_ok=True)
     # rename wandb run name and run tags
     config_dict = dict(wandb.run.config) 
     if config_dict['reg'] == 0:
         hyper_name="baseline"
-    hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in keys)
+    else:
+        hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in keys)
     wandb.run.name = model_name + "-"+ hyper_name
     wandb.run.tags= [model_name]
+     # set output_dir
+    args.output_dir = args.output_dir/hyper_name/model_name
+    args.output_dir.mkdir(parents=True, exist_ok=True)
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     model, train_loader, val_loader, criterion, optimizer, \
         scheduler, saver,  metric_store, states = \
