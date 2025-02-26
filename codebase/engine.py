@@ -41,11 +41,10 @@ def _run_one_epoch(is_training: bool,
         scaler = GradScaler(enabled=use_amp and is_training)
 
     gradident_accumulator = GradientAccumulator(steps=accmulated_steps, enabled=is_training)
-    
-    ece_metric = AverageMetric("ece")
-    mce_metric = AverageMetric("mce")
     ece = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='l1')
     mce = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='max')
+    all_probs = []
+    all_targets = []
 
     time_cost_metric = AverageMetric("time_cost")
     loss_metric = AverageMetric("loss")
@@ -102,8 +101,8 @@ def _run_one_epoch(is_training: bool,
         gradident_accumulator.backward_step(model, loss, optimizer, scaler)
         # caculate calibration error
         probs = F.softmax(outputs.detach(), dim=1)
-        ece_ = ece(probs, targets).item()
-        mce_ = mce(probs, targets).item()
+        all_probs.append(probs)
+        all_targets.append(targets)
         
         # Update metrics
         time_cost_metric.update(time_cost)
@@ -111,8 +110,7 @@ def _run_one_epoch(is_training: bool,
         loss_metric.update(loss_metric_value)
         eta.step()
         speed_tester.update(inputs)
-        ece_metric.update(ece_)
-        mce_metric.update(mce_)
+
 
         # Logging
         if iter_ % log_interval == 0 or iter_ == len(loader):
@@ -128,11 +126,14 @@ def _run_one_epoch(is_training: bool,
             ]))
             time_cost_metric.reset()
             speed_tester.reset()
-
+    all_probs = torch.cat(all_probs, dim=0)
+    all_targets = torch.cat(all_targets, dim=0)
+    ece_score = ece(all_probs, all_targets).item()
+    mce_score = mce(all_probs, all_targets).item()
     if is_training:
-        update_metrics_online(train_metrics, train_onlinecumulant, loss_metric_value)
+        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
     else: 
-        update_metrics(test_metrics, model, loader, loss_metric_value)
+        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
 
 
     # Final epoch logging
@@ -141,17 +142,22 @@ def _run_one_epoch(is_training: bool,
         f"epoch={epoch:04d} {phase} complete",
         f"{loss_metric}",
         f"{accuracy_metric}",
-        f"{ece_metric}",
-        f"{mce_metric}",
+        f"{ece_score}",
+        f"{mce_score}",
     ]))
 
     return {
         f"{phase}/lr": lr,
         f"{phase}/loss": loss_metric.compute(),
-        f"{phase}/ece": ece_metric.compute(),
-        f"{phase}/mce": mce_metric.compute(),
+        f"{phase}/ece": ece_score,
+        f"{phase}/mce": mce_score,
         f"{phase}/top1_acc": accuracy_metric.at(1).rate,
         f"{phase}/top5_acc": accuracy_metric.at(5).rate,
+        f"{phase}/L": L,
+        f"{phase}/alphaD": alphaD,
+        f"{phase}/var": var,
+        f"{phase}/lambd": lambd,
+        f"{phase}/cummulant": cummulant,
     }
 
 
