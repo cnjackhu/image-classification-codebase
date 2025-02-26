@@ -13,7 +13,7 @@ from codebase.torchutils.distributed import world_size
 from codebase.torchutils.metrics import AccuracyMetric, AverageMetric, EstimatedTimeArrival
 from codebase.torchutils.common import GradientAccumulator
 from codebase.torchutils.common import ThroughputTester, time_enumerate
-
+from metrics import update_metrics, update_metrics_online
 _logger = logging.getLogger(__name__)
 
 scaler = None
@@ -128,6 +128,12 @@ def _run_one_epoch(is_training: bool,
             ]))
             time_cost_metric.reset()
             speed_tester.reset()
+
+    if is_training:
+        update_metrics_online(train_metrics, train_onlinecumulant, loss_metric_value)
+    else: 
+        update_metrics(test_metrics, model, loader, loss_metric_value)
+
 
     # Final epoch logging
     _logger.info(", ".join([
