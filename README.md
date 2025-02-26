@@ -83,3 +83,6 @@ Finally, enjoy the code.
   howpublished = {\url{https://github.com/chenyaofo/image-classification-codebase}}
 }
 ```
+## Some feature to be optimized
+
+It can resume training, for example if it ends at epoch 9, it will resume from epoch 9, but learning rate is from starting point which is 0.1 in the code.
