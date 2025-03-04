@@ -130,10 +130,11 @@ def _run_one_epoch(is_training: bool,
     all_targets = torch.cat(all_targets, dim=0)
     ece_score = ece(all_probs, all_targets).item()
     mce_score = mce(all_probs, all_targets).item()
-    if is_training:
-        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
-    else: 
-        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
+    if reg > 0:
+        if is_training:
+            L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
+        else: 
+            L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
 
 
     # Final epoch logging
@@ -145,20 +146,29 @@ def _run_one_epoch(is_training: bool,
         f"{ece_score}",
         f"{mce_score}",
     ]))
-
-    return {
-        f"{phase}/lr": lr,
-        f"{phase}/loss": loss_metric.compute(),
-        f"{phase}/ece": ece_score,
-        f"{phase}/mce": mce_score,
-        f"{phase}/top1_acc": accuracy_metric.at(1).rate,
-        f"{phase}/top5_acc": accuracy_metric.at(5).rate,
-        f"{phase}/L": L,
-        f"{phase}/alphaD": alphaD,
-        f"{phase}/var": var,
-        f"{phase}/lambd": lambd,
-        f"{phase}/cummulant": cummulant,
-    }
+    if  reg> 0:
+        return {
+            f"{phase}/lr": lr,
+            f"{phase}/loss": loss_metric.compute(),
+            f"{phase}/ece": ece_score,
+            f"{phase}/mce": mce_score,
+            f"{phase}/top1_acc": accuracy_metric.at(1).rate,
+            f"{phase}/top5_acc": accuracy_metric.at(5).rate,
+            f"{phase}/L": L,
+            f"{phase}/alphaD": alphaD,
+            f"{phase}/var": var,
+            f"{phase}/lambd": lambd,
+            f"{phase}/cummulant": cummulant,
+        }
+    else:
+        return {
+            f"{phase}/lr": lr,
+            f"{phase}/loss": loss_metric.compute(),
+            f"{phase}/ece": ece_score,
+            f"{phase}/mce": mce_score,
+            f"{phase}/top1_acc": accuracy_metric.at(1).rate,
+            f"{phase}/top5_acc": accuracy_metric.at(5).rate,
+        }
 
 
 train_one_epoch = functools.partial(_run_one_epoch, is_training=True)
