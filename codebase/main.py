@@ -60,7 +60,13 @@ def excute_pipeline(
         return
 
     eta = EstimatedTimeArrival(max_epochs)
-
+    best_loss = 10000
+    wandb.define_metric("eval/top1_acc", summary="max")
+    wandb.define_metric("eval/top5_acc", summary="max")
+    wandb.define_metric("eval/L", summary="min")
+    wandb.define_metric("eval/loss", summary="min")
+    wandb.define_metric("eval/ece", summary="min")
+    wandb.define_metric("eval/mce", summary="min")
     for epoch in range(start_epoch+1, max_epochs+1):
         if is_dist_avail_and_init():
             if hasattr(train_loader, "sampler"):
@@ -83,8 +89,12 @@ def excute_pipeline(
             **kwargs
         )
         # using wandb to log, 
-        wandb.log(metric_store.get_last_metrics()) 
-
+        dic =  metric_store.get_last_metrics()
+        wandb.log(dic)
+        # log Variance of the model with the best log-loss
+        if dic['eval/loss'] < best_loss:
+            wandb.run.summary['eval/var'] = dic['eval/var']
+            best_loss = dic['eval/loss'] 
         state_ckpt.save(metric_store=metric_store, states=states)
 
         eta.step()
@@ -232,11 +242,6 @@ def main_worker(local_rank: int,
 
 
 def main(args: Args):
-    
-
-    # Initialize sweep by passing in config.
-    # (Optional) Provide a name of the project.
-    #sweep_id = wandb.sweep(sweep=sweep_configuration, project="my-sweep")
     
     distributed = args.world_size > 1
     ngpus_per_node = torch.cuda.device_count()

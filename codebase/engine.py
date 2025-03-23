@@ -59,11 +59,10 @@ def _run_one_epoch(is_training: bool,
     _logger.info(f"{phase.upper()} start, epoch={epoch:04d}, lr={lr:.6f}")
     
     # Set criterion reduction based on training and reg condition
-    criterion.reduction = 'none' if is_training and reg > 0 else 'mean'
+    criterion.reduction = 'none' if is_training  else 'mean'
 
     # Initialize online cumulant if needed
-    
-    if is_training and reg > 0:
+    if is_training:
         train_onlinecumulant = OnlineCumulant(device, len(loader.dataset), loss_fn=criterion)
 
     # Main training/validation loop
@@ -73,14 +72,18 @@ def _run_one_epoch(is_training: bool,
         targets = targets.to(device=device, non_blocking=True)
 
         # Forward pass
+        #breakpoint()
         with torch.set_grad_enabled(mode=is_training):
             with autocast(enabled=use_amp and is_training):
                 outputs = model(inputs)
-                if is_training and reg > 0:
+                if is_training:
                     train_losses = criterion(outputs, targets)
                     train_onlinecumulant.update_losses(train_losses.clone().to(device))
                     # Calculate regularizer and batch loss
-                    if reg == 3:
+                    if reg == 0:
+                        batch_loss = torch.mean(train_losses)
+                        regularizer = 0
+                    elif reg == 3:
                         regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=0.0)
                     elif reg == 4:
                         regularizer, batch_loss, _ = compute_regularizer(lamb, train_losses, overlap=1.0)
@@ -93,7 +96,7 @@ def _run_one_epoch(is_training: bool,
                         regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
                     loss = batch_loss + regularizer
                     loss_metric_value = torch.mean(train_losses).item()
-                else:
+                else: # for the eval epoch
                     loss = criterion(outputs, targets)
                     loss_metric_value = loss.item()
 
@@ -130,12 +133,12 @@ def _run_one_epoch(is_training: bool,
     all_targets = torch.cat(all_targets, dim=0)
     ece_score = ece(all_probs, all_targets).item()
     mce_score = mce(all_probs, all_targets).item()
-    if reg > 0:
-        if is_training:
-            L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
-        else: 
-            L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
-
+    if is_training:
+        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
+    else: 
+        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
+    # variance of the model with the best log-loss
+    
 
     # Final epoch logging
     _logger.info(", ".join([
@@ -146,29 +149,21 @@ def _run_one_epoch(is_training: bool,
         f"{ece_score}",
         f"{mce_score}",
     ]))
-    if  reg> 0:
-        return {
-            f"{phase}/lr": lr,
-            f"{phase}/loss": loss_metric.compute(),
-            f"{phase}/ece": ece_score,
-            f"{phase}/mce": mce_score,
-            f"{phase}/top1_acc": accuracy_metric.at(1).rate,
-            f"{phase}/top5_acc": accuracy_metric.at(5).rate,
-            f"{phase}/L": L,
-            f"{phase}/alphaD": alphaD,
-            f"{phase}/var": var,
-            f"{phase}/lambd": lambd,
-            f"{phase}/cummulant": cummulant,
-        }
-    else:
-        return {
-            f"{phase}/lr": lr,
-            f"{phase}/loss": loss_metric.compute(),
-            f"{phase}/ece": ece_score,
-            f"{phase}/mce": mce_score,
-            f"{phase}/top1_acc": accuracy_metric.at(1).rate,
-            f"{phase}/top5_acc": accuracy_metric.at(5).rate,
-        }
+
+    return {
+        f"{phase}/lr": lr,
+        f"{phase}/loss": loss_metric.compute(),
+        f"{phase}/ece": ece_score,
+        f"{phase}/mce": mce_score,
+        f"{phase}/top1_acc": accuracy_metric.at(1).rate,
+        f"{phase}/top5_acc": accuracy_metric.at(5).rate,
+        f"{phase}/L": L,
+        f"{phase}/alphaD": alphaD,
+        f"{phase}/var": var,
+        f"{phase}/lambd": lambd,
+        f"{phase}/cummulant": cummulant,
+    }
+
 
 
 train_one_epoch = functools.partial(_run_one_epoch, is_training=True)
