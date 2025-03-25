@@ -58,7 +58,7 @@ def _run_one_epoch(is_training: bool,
     lr = optimizer.param_groups[0]['lr']
     _logger.info(f"{phase.upper()} start, epoch={epoch:04d}, lr={lr:.6f}")
     
-    # Set criterion reduction based on training and reg condition
+    # Set criterion reduction based on training 
     criterion.reduction = 'none' if is_training  else 'mean'
 
     # Initialize online cumulant if needed
@@ -77,7 +77,7 @@ def _run_one_epoch(is_training: bool,
             with autocast(enabled=use_amp and is_training):
                 outputs = model(inputs)
                 if is_training:
-                    train_losses = criterion(outputs, targets)
+                    train_losses = criterion(outputs, targets) # not average on the batch
                     train_onlinecumulant.update_losses(train_losses.clone().to(device))
                     # Calculate regularizer and batch loss
                     if reg == 0:
@@ -97,7 +97,7 @@ def _run_one_epoch(is_training: bool,
                     loss = batch_loss + regularizer
                     loss_metric_value = torch.mean(train_losses).item()
                 else: # for the eval epoch
-                    loss = criterion(outputs, targets)
+                    loss = criterion(outputs, targets) # average on the batch
                     loss_metric_value = loss.item()
 
         # Backward pass and optimization
