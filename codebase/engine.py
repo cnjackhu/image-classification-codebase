@@ -147,9 +147,9 @@ def _run_one_epoch(is_training: bool,
     mce_score = mce(all_probs, all_targets).item()
 
     if is_training:
-        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,lamb.item())
+        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,lamb)
     else: 
-        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,lamb.item())
+        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,lamb)
     # variance of the model with the best log-loss
     
 
