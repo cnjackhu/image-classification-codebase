@@ -2,6 +2,7 @@ import functools
 import logging
 from ratefunctiontorch import OnlineCumulant, RateCumulant
 from regularizers import compute_regularizer
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.nn as nn
@@ -94,6 +95,11 @@ def _run_one_epoch(is_training: bool,
                         _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(s, return_lambdas=True)
                         lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.01)
                         regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
+                    elif reg == 7:
+                        s = torch.tensor(np.log(1.0/lamb)/len(loader.dataset), dtype=torch.float32, device=device)
+                        _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(s, return_lambdas=True)
+                        lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.01)
+                        regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
                     loss = batch_loss + regularizer
                     loss_metric_value = torch.mean(train_losses).item()
                 else: # for the eval epoch
@@ -133,10 +139,13 @@ def _run_one_epoch(is_training: bool,
     all_targets = torch.cat(all_targets, dim=0)
     ece_score = ece(all_probs, all_targets).item()
     mce_score = mce(all_probs, all_targets).item()
+
+    s = torch.tensor(np.log(1.0/lamb)/len(loader.dataset), dtype=torch.float32, device=device)
+
     if is_training:
-        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,loss_metric.compute())
+        L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,s)
     else: 
-        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,loss_metric.compute())
+        L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,s)
     # variance of the model with the best log-loss
     
 
