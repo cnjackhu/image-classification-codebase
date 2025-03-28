@@ -81,7 +81,6 @@ def _run_one_epoch(is_training: bool,
                     train_losses = criterion(outputs, targets) # not average on the batch
                     train_onlinecumulant.update_losses(train_losses.clone().to(device))
 
-                    lambda_star = torch.tensor(lamb, dtype=torch.float32, device=device)
                     # Calculate regularizer and batch loss
                     if reg == 0:
                         batch_loss = torch.mean(train_losses)
@@ -95,7 +94,7 @@ def _run_one_epoch(is_training: bool,
                     elif reg == 6:
                         s = torch.tensor(lamb, dtype=torch.float32, device=device)
                         _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(s, return_lambdas=True)
-                        lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.01)
+                        lambda_star = torch.clamp(lambda_star.clone().to(device), min=0.00001, max=10.0)
                         regularizer, batch_loss, _ = compute_regularizer(lambda_star, train_losses, overlap=0.0)
                     elif reg == 7:
                         s = torch.tensor(np.log(1.0/lamb)/len(loader.dataset), dtype=torch.float32, device=device)
@@ -149,8 +148,13 @@ def _run_one_epoch(is_training: bool,
     mce_score = mce(all_probs, all_targets).item()
 
     if is_training:
+        lambda_star = torch.tensor(lamb, dtype=torch.float32, device=device)
+        if reg == 6 or reg == 7 or reg == 8:
+            lambda_star = train_onlinecumulant.compute_inverse_rate_function(lambda_star, return_lambdas=True)
+
         L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,lambda_star)
     else: 
+        lambda_star = torch.tensor(lamb, dtype=torch.float32, device=device)
         L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,lambda_star)
     # variance of the model with the best log-loss
     
