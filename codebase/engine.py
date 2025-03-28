@@ -152,7 +152,7 @@ def _run_one_epoch(is_training: bool,
         lambda_star = torch.tensor(lamb, dtype=torch.float32, device=device)
         if reg == 6 or reg == 7 or reg == 8:
             _, lambda_star = train_onlinecumulant.compute_inverse_rate_function(lambda_star, return_lambdas=True)
-
+            lambda_star = lambda_star.to(device)
         L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,lambda_star)
     else: 
         lambda_star = torch.tensor(lamb, dtype=torch.float32, device=device)
