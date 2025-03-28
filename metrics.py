@@ -5,7 +5,7 @@ from utils import zero_one_loss, get_losses
 
 
 @torch.no_grad()
-def update_metrics(model, loader, s, loss_fn=nn.CrossEntropyLoss(reduction="none")):
+def update_metrics(model, loader, lambda_star, loss_fn=nn.CrossEntropyLoss(reduction="none")):
     """
     Update metrics dictionary with current model performance metrics.
     """
@@ -14,30 +14,29 @@ def update_metrics(model, loader, s, loss_fn=nn.CrossEntropyLoss(reduction="none
     ratecumulant = RateCumulant.from_losses(log_loss)
 
     L = ratecumulant.compute_mean()
-    inv_rate, lamb, cummulant = ratecumulant.compute_inverse_rate_function(
-        s, return_lambdas=True, return_cummulants=True
-    )
+
+    cummulant = ratecumulant.compute_cumulants(lambda_star)
+    regularizer = cummulant/lambda_star
+
     var = ratecumulant.compute_variance()
     error = torch.mean(zero_one_losses).item()
-    return L.item(),inv_rate.item(),var.item(),lamb.item(),cummulant.item(),error
+    return L.item(),regularizer.item(),var.item(),lambda_star.item(),cummulant.item(),error
 
 
 
 @torch.no_grad()
-def update_metrics_online(ratecumulant, s):
+def update_metrics_online(ratecumulant, lambda_star):
     """
     Update metrics dictionary with current model performance metrics.
     """
     L = ratecumulant.compute_mean()
 
-    inv_rate, lamb, cummulant = ratecumulant.compute_inverse_rate_function(
-        s, return_lambdas=True, return_cummulants=True
-    )
-
+    cummulant = ratecumulant.compute_cumulants(lambda_star)
+    regularizer = cummulant/lambda_star
     #rough estimate of error
     error = 1-torch.mean((torch.exp(-ratecumulant.get_losses())>0.5).float()).item()
     var = ratecumulant.compute_variance()
-    return L.item(),inv_rate.item(),var.item(),lamb.item(),cummulant.item(),error
+    return L.item(),regularizer.item(),var.item(),lambda_star.item(),cummulant.item(),error
     
 
 
