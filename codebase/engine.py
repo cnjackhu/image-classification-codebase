@@ -112,6 +112,7 @@ def _run_one_epoch(is_training: bool,
                 else: # for the eval epoch
                     loss = criterion(outputs, targets) # average on the batch
                     loss_metric_value = loss.item()
+                    # maybe should caculate the lambda_star here
 
         # Backward pass and optimization
         gradident_accumulator.backward_step(model, loss, optimizer, scaler)
