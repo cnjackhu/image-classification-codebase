@@ -113,6 +113,7 @@ def _run_one_epoch(is_training: bool,
                 else: # for the eval epoch
                     loss = criterion(outputs, targets) # average on the batch
                     loss_metric_value = loss.item()
+                    # maybe should caculate the lambda_star here
 
         # Backward pass and optimization
         gradident_accumulator.backward_step(model, loss, optimizer, scaler)
@@ -150,7 +151,7 @@ def _run_one_epoch(is_training: bool,
 
     if is_training:
         L,alphaD,var,lambd,cummulant,error = update_metrics_online(train_onlinecumulant,lambda_star)
-    else: 
+    else: # here is for eval phase, in eval phase the lambda_star is not defined
         L,alphaD,var,lambd,cummulant,error = update_metrics(model,loader,lambda_star)
     # variance of the model with the best log-loss
     
