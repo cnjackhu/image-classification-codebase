@@ -42,8 +42,9 @@ def _run_one_epoch(is_training: bool,
         scaler = GradScaler(enabled=use_amp and is_training)
 
     gradident_accumulator = GradientAccumulator(steps=accmulated_steps, enabled=is_training)
-    ece = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='l1')
-    mce = MulticlassCalibrationError(num_classes=10, n_bins=10, norm='max')
+    num_classes = len(loader.dataset.classes)
+    ece = MulticlassCalibrationError(num_classes=num_classes, n_bins=10, norm='l1')
+    mce = MulticlassCalibrationError(num_classes=num_classes, n_bins=10, norm='max')
     all_probs = []
     all_targets = []
 
