@@ -35,7 +35,7 @@ from codebase.torchutils.metrics import EstimatedTimeArrival
 from codebase.torchutils.logging import init_logger, create_code_snapshot
 
 
-_logger = logging.getLogger(__name__)
+#_logger = logging.getLogger(__name__)
 
 
 def excute_pipeline(
@@ -46,7 +46,7 @@ def excute_pipeline(
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
-    state_ckpt: StateCheckPoint,
+    #state_ckpt: StateCheckPoint,
     states: dict,
     metric_store: MetricsStore,
     **kwargs
@@ -95,16 +95,16 @@ def excute_pipeline(
         if dic['eval/loss'] < best_loss:
             wandb.run.summary['eval/var'] = dic['eval/var']
             best_loss = dic['eval/loss'] 
-        state_ckpt.save(metric_store=metric_store, states=states)
+        #state_ckpt.save(metric_store=metric_store, states=states)
 
         eta.step()
 
         best_metrics = metric_store.get_best_metrics()
-        _logger.info(f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc']*100:.2f}%, "
+        print(f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc']*100:.2f}%, "
                      f"top5-acc={best_metrics['eval/top5_acc']*100:.2f}% (epoch={metric_store.best_epoch+1}), {eta}")
 
 
-def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
+def prepare_for_training(conf: ConfigTree,  local_rank: int):
     model_config = conf.get("model")
     load_from = model_config.pop("load_from")
     model: nn.Module = MODEL.build_from(model_config)
@@ -122,7 +122,7 @@ def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
     basic_bs = optimizer_config.pop("basic_bs")
     optimizer_config["lr"] = optimizer_config["lr"] * (conf.get("data.batch_size") * world_size() / basic_bs)
     optimizer = OPTIMIZER.build_from(optimizer_config, dict(params=model.named_parameters()))
-    _logger.info(f'Set lr={optimizer_config["lr"]:.4f} with batch size={conf.get("data.batch_size") * world_size()}')
+    print(f'Set lr={optimizer_config["lr"]:.4f} with batch size={conf.get("data.batch_size") * world_size()}')
 
     scheduler = SCHEDULER.build_from(conf.get("scheduler"), dict(optimizer=optimizer))
 
@@ -132,13 +132,13 @@ def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
 
     if conf.get_bool("use_compile"):
         if hasattr(torch, "compile"):
-            _logger.info("Use torch.compile to optimize model, please wait for while.")
+            print("Use torch.compile to optimize model, please wait for while.")
             model = torch.compile(
                 model=model,
                 **conf.get("compile")
             )
         else:
-            _logger.info("PyTorch version is too old to support torch.compile, skip it.")
+            print("PyTorch version is too old to support torch.compile, skip it.")
 
     if conf.get_bool("use_tf32"):
         torch.backends.cuda.matmul.allow_tf32 = True
@@ -151,26 +151,26 @@ def prepare_for_training(conf: ConfigTree, output_dir: str, local_rank: int):
 
     metric_store = MetricsStore(dominant_metric_name="eval/top1_acc")
     states = dict(model=unwarp_module(model), optimizer=optimizer, scheduler=scheduler)
-    state_ckpt = StateCheckPoint(output_dir)
+    #state_ckpt = StateCheckPoint(output_dir)
 
-    state_ckpt.restore(metric_store, states, device=get_device())
+    #state_ckpt.restore(metric_store, states, device=get_device())
 
     if is_dist_avail_and_init():
         model = nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
 
     return model, train_loader, val_loader, criterion, optimizer, scheduler, \
-        state_ckpt,  metric_store, states
+         metric_store, states
 
 
 def _init(local_rank: int, ngpus_per_node: int, args: Args):
     set_proper_device(local_rank)
     rank = args.node_rank*ngpus_per_node+local_rank
-    init_logger(rank=rank, filenmae=args.output_dir/"default.log")
+    #init_logger(rank=rank, filenmae=args.output_dir/"default.log")
 
     # patch_download_in_cn()
 
-    if StateCheckPoint(args.output_dir).is_ckpt_exists():
-        _logger.info("-"*30+"Resume from the last training checkpoints."+"-"*30)
+    # if StateCheckPoint(args.output_dir).is_ckpt_exists():
+    #     _logger.info("-"*30+"Resume from the last training checkpoints."+"-"*30)
 
     if set_reproducible:
         #random_seed = generate_random_seed()
@@ -183,8 +183,8 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
     # create_code_snapshot(name="code", include_suffix=[".py", ".conf"],
     #                      source_directory=".", store_directory=args.output_dir)
 
-    _logger.info("Collect envs from system:\n" + get_pretty_env_info())
-    _logger.info("Args:\n" + pprint.pformat(dataclasses.asdict(args)))
+    print("Collect envs from system:\n" + get_pretty_env_info())
+    print("Args:\n" + pprint.pformat(dataclasses.asdict(args)))
 
     distributed_init(dist_backend=args.dist_backend, init_method=args.dist_url,
                      world_size=args.world_size, rank=rank)
@@ -199,6 +199,7 @@ def main_worker(local_rank: int,
     # Initialize wandb 
     keys=[ 'reg', 'lamb']
     run=wandb.init(config=config,config_include_keys=keys)
+    print(f'reg={config["reg"]}, lamb={config["lamb"]}')
     # get model name
     conf.put('model.name', wandb.config.sweep_model)
     model_name = re.sub(r'^cifar(10|100)_', '', wandb.config.sweep_model)
@@ -210,13 +211,14 @@ def main_worker(local_rank: int,
         hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in keys)
     wandb.run.name = model_name + "-"+ hyper_name
     wandb.run.tags= [model_name]
+    
      # set output_dir
-    args.output_dir = args.output_dir/hyper_name/model_name
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    # args.output_dir = args.output_dir/hyper_name/model_name
+    # args.output_dir.mkdir(parents=True, exist_ok=True)
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     model, train_loader, val_loader, criterion, optimizer, \
-        scheduler, saver,  metric_store, states = \
-        prepare_for_training(conf, args.output_dir, local_rank)
+        scheduler,  metric_store, states = \
+        prepare_for_training(conf, local_rank)
     
     excute_pipeline(
         only_evaluate=conf.get_bool("only_evaluate"),
@@ -226,7 +228,7 @@ def main_worker(local_rank: int,
         max_epochs=conf.get_int("max_epochs"),
         train_loader=train_loader,
         val_loader=val_loader,
-        state_ckpt=saver,
+        #state_ckpt=saver,
         states=states,
         metric_store=metric_store,
         model=model,

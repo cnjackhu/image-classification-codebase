@@ -15,7 +15,7 @@ from codebase.torchutils.metrics import AccuracyMetric, AverageMetric, Estimated
 from codebase.torchutils.common import GradientAccumulator
 from codebase.torchutils.common import ThroughputTester, time_enumerate
 from metrics import update_metrics, update_metrics_online
-_logger = logging.getLogger(__name__)
+#_logger = logging.getLogger(__name__)
 
 scaler = None
 
@@ -58,7 +58,7 @@ def _run_one_epoch(is_training: bool,
         scheduler.step(epoch)
 
     lr = optimizer.param_groups[0]['lr']
-    _logger.info(f"{phase.upper()} start, epoch={epoch:04d}, lr={lr:.6f}")
+    print(f"{phase.upper()} start, epoch={epoch:04d}, lr={lr:.6f}")
     
     # Set criterion reduction based on training 
     criterion.reduction = 'none' if is_training  else 'mean'
@@ -132,7 +132,7 @@ def _run_one_epoch(is_training: bool,
 
         # Logging
         if iter_ % log_interval == 0 or iter_ == len(loader):
-            _logger.info(", ".join([
+            print(", ".join([
                 phase.upper(),
                 f"epoch={epoch:04d}",
                 f"iter={iter_:05d}/{len(loader):05d}",
@@ -162,7 +162,7 @@ def _run_one_epoch(is_training: bool,
     
 
     # Final epoch logging
-    _logger.info(", ".join([
+    print(", ".join([
         phase.upper(),
         f"epoch={epoch:04d} {phase} complete",
         f"{loss_metric}",
