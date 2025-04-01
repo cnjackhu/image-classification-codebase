@@ -48,7 +48,7 @@ def get_args(argv=sys.argv):
         args.dist_url = f"tcp://{args.dist_url}:{get_free_port()}"
 
     args.conf:ConfigTree = ConfigFactory.parse_file(args.conf)
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    #args.output_dir.mkdir(parents=True, exist_ok=True)
 
     apply_modifications(modifications=args.modifications, conf=args.conf)
 
