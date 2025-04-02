@@ -24,7 +24,7 @@ if __name__ == "__main__":
     prefix = 'cifar100_' if args.conf.data.num_classes == 100 else 'cifar10_'
     # Selectively enable models (you can modify this list if needed)
     selected_models = [
-    'vgg11_bn', 'vgg13_bn', 'vgg16_bn', 'vgg19_bn',
+    'vgg11_bn', 'vgg13_bn', #'vgg16_bn', 'vgg19_bn',
     # Add more if needed
     ]
     selected_models=base_models

@@ -40,7 +40,7 @@ class Args(TypedArgs):
 
 def get_args(argv=sys.argv):
     args, _ = Args.from_known_args(argv)
-    args.output_dir = pathlib.Path(args.output_dir)
+    #args.output_dir = pathlib.Path(args.output_dir)
 
     if args.dist_url is None:
         args.dist_url = f"tcp://127.0.0.1:{get_free_port()}"
