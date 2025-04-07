@@ -4,12 +4,12 @@ import pathlib
 import torch.utils.data as data
 import torchvision.transforms as T
 from torchvision.datasets import ImageFolder
-
+from torch.utils.data import ConcatDataset
 from codebase.torchutils.distributed import world_size
 from ..utils import get_samplers
 
 
-_logger = logging.getLogger(__name__)
+#_logger = logging.getLogger(__name__)
 
 
 def get_train_transforms(crop_size, mean, std, is_training):
@@ -27,7 +27,6 @@ def get_train_transforms(crop_size, mean, std, is_training):
 
 def _build_imagenet_loader(root, is_training, image_size, mean, std, batch_size, num_workers):
     transforms = get_train_transforms(image_size, mean, std, is_training)
-
     dataset = ImageFolder(pathlib.Path(root)/("train" if is_training else "val"), transform=transforms)
     sampler = get_samplers(dataset, is_training)
     loader = data.DataLoader(dataset, batch_size=batch_size,
@@ -36,9 +35,9 @@ def _build_imagenet_loader(root, is_training, image_size, mean, std, batch_size,
                              num_workers=num_workers,
                              persistent_workers=True,
                              drop_last=is_training)
-    _logger.info(f"Loading ImageNet dataset using torchvision from folder"
+    print(f"Loading ImageNet dataset using torchvision from folder"
                  f" with {'trainset' if is_training else 'valset'} (len={len(dataset)})")
-    _logger.info(f"Total batch_size={batch_size*world_size()} with world_size={world_size()}, run with {len(loader)} iters per epoch")
+    print(f"Total batch_size={batch_size*world_size()} with world_size={world_size()}, run with {len(loader)} iters per epoch")
 
     return loader
 

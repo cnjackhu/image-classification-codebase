@@ -119,6 +119,7 @@ def prepare_for_training(conf: ConfigTree, local_rank: int):
     train_loader, val_loader = DATA.build_from(
         conf.get("data"), dict(local_rank=local_rank)
     )
+    
 
     criterion = CRITERION.build_from(conf.get("criterion"))
 
@@ -215,7 +216,7 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     keys = ["reg", "lamb"]
     run = wandb.init(config=config, config_include_keys=keys)
     print(f"reg={config['reg']}, lamb={config['lamb']}")
-    # get model name
+    # change the model_name in conf according to the sweep configuration
     conf.put("model.name", wandb.config.sweep_model)
     model_name = re.sub(r"^cifar(10|100)_", "", wandb.config.sweep_model)
     # rename wandb run name and run tags
