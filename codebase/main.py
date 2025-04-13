@@ -1,49 +1,44 @@
 # import logging
 import dataclasses
-import pprint
-import wandb
-
-# import pathlib
-import re
 import json
+import os
+import pprint
+import re
+
 import torch
-from torch import optim
 import torch.cuda
-import torch.utils.data
-import torch.nn as nn
 import torch.multiprocessing as mp
+import torch.nn as nn
+import torch.utils.data
+from pyhocon import ConfigTree, HOCONConverter
 from torch.utils.collect_env import get_pretty_env_info
 
-from pyhocon import ConfigTree, HOCONConverter
+import wandb
 from codebase.config import Args
+from codebase.criterion import CRITERION
 from codebase.data import DATA
+from codebase.engine import evaluate_one_epoch, train_one_epoch
 from codebase.models import MODEL
 from codebase.optimizer import OPTIMIZER
 from codebase.scheduler import SCHEDULER
-from codebase.criterion import CRITERION
-from codebase.engine import train_one_epoch, evaluate_one_epoch
-
-from codebase.torchutils.common import (
-    set_cudnn_auto_tune,
-    set_reproducible,
-    generate_random_seed,
-    disable_debug_api,
-)
-from codebase.torchutils.common import set_proper_device, get_device
-from codebase.torchutils.common import unwarp_module
-from codebase.torchutils.common import compute_nparam, compute_flops
 
 # from codebase.torchutils.common import StateCheckPoint
-from codebase.torchutils.common import MetricsStore
-from codebase.torchutils.common import patch_download_in_cn
-from codebase.torchutils.common import only_master
+from codebase.torchutils.common import (
+    MetricsStore,
+    disable_debug_api,
+    get_device,
+    set_cudnn_auto_tune,
+    set_proper_device,
+    set_reproducible,
+    unwarp_module,
+)
 from codebase.torchutils.distributed import (
     distributed_init,
     is_dist_avail_and_init,
-    is_master,
     world_size,
 )
 from codebase.torchutils.metrics import EstimatedTimeArrival
+
 # from codebase.torchutils.logging import init_logger, create_code_snapshot
 
 
@@ -119,7 +114,6 @@ def prepare_for_training(conf: ConfigTree, local_rank: int):
     train_loader, val_loader = DATA.build_from(
         conf.get("data"), dict(local_rank=local_rank)
     )
-    
 
     criterion = CRITERION.build_from(conf.get("criterion"))
 
@@ -213,18 +207,30 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
 def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTree):
     config = json.loads(HOCONConverter.convert(conf, "json"))
     # Initialize wandb
-    keys = ["reg", "lamb"]
+    # Add SLURM job ID to config (if available)
+    slurm_job_id = os.getenv("SLURM_JOB_ID")
+    array_job_id = os.getenv("SLURM_ARRAY_JOB_ID")
+    array_task_id = os.getenv("SLURM_ARRAY_TASK_ID")
+    if slurm_job_id is None:
+        config["job_id"] = "-1"
+    elif array_job_id is not None and array_task_id is not None:
+        config["job_id"] = f"{array_job_id}_{array_task_id}"
+    else:
+        config["job_id"] = slurm_job_id
+    # Define keys to include in sweep config (add your new key here)
+    keys = ["reg", "lamb", "job_id"]
     run = wandb.init(config=config, config_include_keys=keys)
-    print(f"reg={config['reg']}, lamb={config['lamb']}")
+    # Logging
+    print(f"reg={config['reg']}, lamb={config['lamb']}, job_id={config['job_id']}")
     # change the model_name in conf according to the sweep configuration
     conf.put("model.name", wandb.config.sweep_model)
     model_name = re.sub(r"^cifar(10|100)_", "", wandb.config.sweep_model)
     # rename wandb run name and run tags
     config_dict = dict(wandb.run.config)
     if config_dict["reg"] == 0:
-        hyper_name = "baseline"
+        hyper_name = "baseline" 
     else:
-        hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in keys)
+        hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in ["reg", "lamb"])
     wandb.run.name = model_name + "-" + hyper_name
     wandb.run.tags = [model_name]
 
