@@ -20,7 +20,10 @@ def update_metrics(model, loader, lambda_star, loss_fn=nn.CrossEntropyLoss(reduc
 
     var = ratecumulant.compute_variance()
     error = torch.mean(zero_one_losses).item()
-    return L.item(),regularizer.item(),var.item(),lambda_star.item(),cummulant.item(),error
+
+    inverse_rate = ratecumulant.compute_inverse_rate_function(lambda_star)
+
+    return L.item(),inverse_rate.item(),var.item(),lambda_star.item(),cummulant.item(),error
 
 
 
@@ -36,7 +39,10 @@ def update_metrics_online(ratecumulant, lambda_star):
     #rough estimate of error
     error = 1-torch.mean((torch.exp(-ratecumulant.get_losses())>0.5).float()).item()
     var = ratecumulant.compute_variance()
-    return L.item(),regularizer.item(),var.item(),lambda_star.item(),cummulant.item(),error
+
+    inverse_rate = ratecumulant.compute_inverse_rate_function(lambda_star)
+    
+    return L.item(),inverse_rate.item(),var.item(),lambda_star.item(),cummulant.item(),error
     
 
 

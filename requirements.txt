@@ -1,3 +1,6 @@
 pyhocon
 torch
 torchvision
+numpy
+git+https://github.com/Ludvins/RateFunctionTorch.git 
+wandb
