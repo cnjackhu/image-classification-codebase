@@ -42,14 +42,17 @@ def get_vit_val_transforms(mean, std, img_size):
     ])
 
 
-def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset_builder, **kwargs):
+def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset_builder, aug,**kwargs):
     if is_vit:
         train_transforms = get_vit_train_transforms(mean, std, image_size)
         val_transforms = get_vit_val_transforms(mean, std, image_size)
     else:
-        train_transforms = get_train_transforms(mean, std)
-        val_transforms = get_val_transforms(mean, std)
-
+        if aug:
+            train_transforms = get_train_transforms(mean, std)
+            val_transforms = get_val_transforms(mean, std)
+        else:
+            train_transforms =  get_val_transforms(mean, std)
+            val_transforms = get_val_transforms(mean, std)
     trainset = dataset_builder(root, train=True, transform=train_transforms, download=True)
     valset = dataset_builder(root, train=False, transform=val_transforms, download=True)
 
@@ -73,14 +76,14 @@ def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset
 
 
 @DATA.register
-def cifar10(root, image_size, mean, std, batch_size, num_workers, is_vit, **kwargs):
+def cifar10(root, image_size, mean, std, batch_size, num_workers, is_vit,aug, **kwargs):
     return _cifar(
-        root, image_size, mean, std, batch_size, num_workers, is_vit, CIFAR10, **kwargs
+        root, image_size, mean, std, batch_size, num_workers, is_vit, CIFAR10,aug, **kwargs
     )
 
 
 @DATA.register
-def cifar100(root, image_size, mean, std, batch_size, num_workers, is_vit, **kwargs):
+def cifar100(root, image_size, mean, std, batch_size, num_workers, is_vit,aug, **kwargs):
     return _cifar(
-        root, image_size, mean, std, batch_size, num_workers, is_vit, CIFAR100, **kwargs
+        root, image_size, mean, std, batch_size, num_workers, is_vit, CIFAR100,aug, **kwargs
     )

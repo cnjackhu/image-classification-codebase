@@ -23,6 +23,6 @@ if __name__ == "__main__":
     args = get_args()
     project_name = args.conf.sweep_name
     sweep_id = wandb.sweep(sweep=sweep_configuration, project=project_name)
-    wrapped_main = lambda: main(args)
+    wrapped_main = lambda: main(get_args())
          # Start sweep job.
     wandb.agent(sweep_id, function=wrapped_main, count=100)

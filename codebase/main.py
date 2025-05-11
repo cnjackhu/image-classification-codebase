@@ -49,6 +49,7 @@ def excute_pipeline(
     only_evaluate: bool,
     reg: int,
     lamb: float,
+    max_norm: float,
     start_epoch: int,
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
@@ -77,11 +78,11 @@ def excute_pipeline(
                 val_loader.sampler.set_epoch(epoch)
 
         metric_store += train_one_epoch(
-            reg=reg, lamb=lamb, epoch=epoch, loader=train_loader, **kwargs
+            reg=reg, lamb=lamb, epoch=epoch,max_norm=max_norm,loader=train_loader, **kwargs
         )
 
         metric_store += evaluate_one_epoch(
-            reg=reg, lamb=lamb, epoch=epoch, loader=val_loader, **kwargs
+            reg=reg, lamb=lamb, epoch=epoch,max_norm=max_norm,loader=val_loader, **kwargs
         )
         # using wandb to log,
         dic = metric_store.get_last_metrics()
@@ -110,7 +111,6 @@ def prepare_for_training(conf: ConfigTree, local_rank: int):
 
     if is_dist_avail_and_init() and conf.get_bool("sync_batchnorm"):
         model = nn.SyncBatchNorm.convert_sync_batchnorm(model)
-
     train_loader, val_loader = DATA.build_from(
         conf.get("data"), dict(local_rank=local_rank)
     )
@@ -205,6 +205,8 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
 
 
 def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTree):
+    conf.put("data.aug", conf.data_aug)
+    conf.put("optimizer.weight_decay", conf.wd)
     config = json.loads(HOCONConverter.convert(conf, "json"))
     # Initialize wandb
     # Add SLURM job ID to config (if available)
@@ -218,17 +220,20 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     else:
         config["job_id"] = slurm_job_id
     # Define keys to include in sweep config (add your new key here)
-    keys = ["reg", "lamb", "job_id"]
+    keys = ["reg", "lamb", "job_id", "wd", "data_aug"]
     run = wandb.init(config=config, config_include_keys=keys)
     # Logging
-    print(f"reg={config['reg']}, lamb={config['lamb']}, job_id={config['job_id']}")
+    print(
+        f"reg={config['reg']}, lamb={config['lamb']}, job_id={config['job_id']},\
+    weight_decay={config['wd']},data_aug={config['data_aug']}"
+    )
     # change the model_name in conf according to the sweep configuration
     conf.put("model.name", wandb.config.sweep_model)
     model_name = re.sub(r"^cifar(10|100)_", "", wandb.config.sweep_model)
     # rename wandb run name and run tags
     config_dict = dict(wandb.run.config)
     if config_dict["reg"] == 0:
-        hyper_name = "baseline" 
+        hyper_name = "baseline"
     else:
         hyper_name = ",".join(f"{k}:{config_dict[k]}" for k in ["reg", "lamb"])
     wandb.run.name = model_name + "-" + hyper_name
@@ -253,6 +258,7 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
         only_evaluate=conf.get_bool("only_evaluate"),
         reg=conf.get_int("reg"),
         lamb=conf.get_float("lamb"),
+        max_norm=conf.get_float("max_norm"),
         start_epoch=metric_store.total_epoch,
         max_epochs=conf.get_int("max_epochs"),
         train_loader=train_loader,

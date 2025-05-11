@@ -1,25 +1,31 @@
 import functools
 
-# import logging
-from ratefunctiontorch import OnlineCumulant, RateCumulant
-from regularizers import compute_regularizer
 import numpy as np
 import torch
-import torch.nn.functional as F
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data
-from torch.cuda.amp import autocast, GradScaler
+
+# import logging
+from ratefunctiontorch import OnlineCumulant
+from torch.cuda.amp import GradScaler, autocast
 from torchmetrics.classification import MulticlassCalibrationError
+
+from codebase.torchutils.common import (
+    GradientAccumulator,
+    ThroughputTester,
+    time_enumerate,
+)
 from codebase.torchutils.distributed import world_size
 from codebase.torchutils.metrics import (
     AccuracyMetric,
     AverageMetric,
     EstimatedTimeArrival,
 )
-from codebase.torchutils.common import GradientAccumulator
-from codebase.torchutils.common import ThroughputTester, time_enumerate
 from metrics import update_metrics, update_metrics_online
+from regularizers import compute_regularizer
+
 # _logger = logging.getLogger(__name__)
 
 scaler = None
@@ -40,6 +46,7 @@ def _run_one_epoch(
     device: str,
     memory_format: str,
     log_interval: int,
+    max_norm: float,
 ):
     phase = "train" if is_training else "eval"
     model.train(mode=is_training)
@@ -87,7 +94,7 @@ def _run_one_epoch(
         targets = targets.to(device=device, non_blocking=True)
 
         # Forward pass
-      
+
         with torch.set_grad_enabled(mode=is_training):
             with autocast(enabled=use_amp and is_training):
                 outputs = model(inputs)
@@ -165,7 +172,7 @@ def _run_one_epoch(
                     # maybe should caculate the lambda_star here
 
         # Backward pass and optimization
-        gradident_accumulator.backward_step(model, loss, optimizer, scaler)
+        gradident_accumulator.backward_step(model, loss, optimizer, scaler, max_norm)
         # caculate calibration error
         probs = F.softmax(outputs.detach(), dim=1)
         all_probs.append(probs)
