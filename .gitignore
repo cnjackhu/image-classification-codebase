@@ -15,7 +15,8 @@ entry/run_resnet*
 *.jpg
 my_figure.pdf
 slurm*
-*.ipynb
+example.ipynb
+
 ### Code ###
 .vscode/*
 # !.vscode/settings.json
