@@ -48,7 +48,21 @@ if __name__ == "__main__":
         raise ValueError("Unsupported number of classes")
     # Selectively enable models (you can modify this list if needed)
     selected_models = [
-        "resnet56",  #'vgg11_bn','vgg13_bn', #'vgg16_bn', 'vgg19_bn',
+        "vgg11_bn",
+        "vgg13_bn",
+        "vgg16_bn",
+        "vgg19_bn",
+        "repvgg_a0",
+        "repvgg_a1",
+        "repvgg_a2",
+        "mobilenetv2_x0_5",
+        "mobilenetv2_x0_75",
+        "mobilenetv2_x1_0",
+        "mobilenetv2_x1_4",
+        "shufflenetv2_x0_5",
+        "shufflenetv2_x1_0",
+        "shufflenetv2_x1_5",
+        "shufflenetv2_x2_0",
     ]
     # selected_models=base_models
     sweep_configuration["parameters"]["sweep_model"]["values"] = [
