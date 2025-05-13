@@ -19,12 +19,11 @@ def update_wandb_run_summaries(entity: str, project: str, metrics: list[str] = N
     for run in runs:
         history = run.history(keys=metrics)
         for metric in metrics:
-            if metric in history:
-                run.summary[metric] = history[metric].iloc[-1]
+            run.summary[metric] = history[metric].iloc[-1]
         run.summary.update()
         print("Finished update for:", run.name)
 
 # Example usage:
 # update_wandb_run_summaries("jackhu0119", "april2_cifar100")       
-# update_wandb_run_summaries("jackhu0119", "april1_cifar10") 
+update_wandb_run_summaries("jackhu0119", "april1_cifar10") 
 
