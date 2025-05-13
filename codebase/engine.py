@@ -46,7 +46,8 @@ def _run_one_epoch(
     device: str,
     memory_format: str,
     log_interval: int,
-    max_norm: float,
+    max_norm: float,  # currently we path the norm but didn't use it
+    output_dir: str,
 ):
     phase = "train" if is_training else "eval"
     model.train(mode=is_training)
@@ -172,7 +173,7 @@ def _run_one_epoch(
                     # maybe should caculate the lambda_star here
 
         # Backward pass and optimization
-        gradident_accumulator.backward_step(model, loss, optimizer, scaler, max_norm)
+        gradident_accumulator.backward_step(model, loss, optimizer, scaler)
         # caculate calibration error
         probs = F.softmax(outputs.detach(), dim=1)
         all_probs.append(probs)
@@ -224,7 +225,8 @@ def _run_one_epoch(
             model, loader, lambda_star
         )
     # variance of the model with the best log-loss
-
+    if is_training and epoch == 200:
+        torch.save(model.state_dict(), f"{output_dir}/epoch_{epoch}.pt")
     # Final epoch logging
     print(
         ", ".join(

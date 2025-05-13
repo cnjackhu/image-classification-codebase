@@ -4,7 +4,7 @@ import json
 import os
 import pprint
 import re
-
+from pathlib import Path
 import torch
 import torch.cuda
 import torch.multiprocessing as mp
@@ -57,6 +57,7 @@ def excute_pipeline(
     # state_ckpt: StateCheckPoint,
     states: dict,
     metric_store: MetricsStore,
+    output_dir: Path,
     **kwargs,
 ):
     if only_evaluate:
@@ -78,11 +79,23 @@ def excute_pipeline(
                 val_loader.sampler.set_epoch(epoch)
 
         metric_store += train_one_epoch(
-            reg=reg, lamb=lamb, epoch=epoch,max_norm=max_norm,loader=train_loader, **kwargs
+            reg=reg,
+            lamb=lamb,
+            epoch=epoch,
+            max_norm=max_norm,
+            loader=train_loader,
+            output_dir=output_dir,
+            **kwargs,
         )
 
         metric_store += evaluate_one_epoch(
-            reg=reg, lamb=lamb, epoch=epoch,max_norm=max_norm,loader=val_loader, **kwargs
+            reg=reg,
+            lamb=lamb,
+            epoch=epoch,
+            max_norm=max_norm,
+            loader=val_loader,
+            output_dir=output_dir,
+            **kwargs,
         )
         # using wandb to log,
         dic = metric_store.get_last_metrics()
@@ -240,8 +253,13 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     wandb.run.tags = [model_name]
 
     # set output_dir
-    # args.output_dir = args.output_dir/hyper_name/model_name
-    # args.output_dir.mkdir(parents=True, exist_ok=True)
+    #args.output_dir = args.output_dir / hyper_name / model_name
+    #args.output_dir.mkdir(parents=True, exist_ok=True)
+    # Create the full path
+    save_path = Path(args.output_dir) / model_name/ hyper_name 
+
+    # Make sure the directory exists
+    save_path.mkdir(parents=True, exist_ok=True)
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
     (
         model,
@@ -275,6 +293,7 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
         device=get_device(),
         memory_format=getattr(torch, conf.get("memory_format")),
         log_interval=conf.get_int("log_interval"),
+        output_dir=save_path,
     )
 
 
