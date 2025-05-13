@@ -1,5 +1,5 @@
 #!/bin/bash --login
-#SBATCH --time=10:00:00
+#SBATCH --time=12:00:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --cpus-per-gpu=6
@@ -31,4 +31,4 @@ echo "Running with $PARAMS"
 #for cifar100
 #python -m entry.run1 --conf conf/cifar100.conf -M $PARAMS sweep_name=april2_cifar100 max_epochs=200
 python -m entry.run1 \
-    --conf conf/cifar10.conf -o output -M $PARAMS sweep_name=cifar10_may13 max_epochs=200
+    --conf conf/cifar100.conf -o output100 -M $PARAMS sweep_name=cifar100_may13 max_epochs=200
