@@ -5,7 +5,7 @@ api = wandb.Api()
 entity,project = "jackhu0119", "ablation2"
 runs = api.runs(f"{entity}/{project}")
 metrics=["eval/L","eval/alphaD"]
-target_names = ["resnet56-reg:5,lamb:0.1", "resnet56-baseline"]
+target_names = ["resnet56-reg:5,lamb:1.0", "resnet56-baseline"]
 df_l = pd.DataFrame()
 df_ir=pd.DataFrame()
 for run in runs:
