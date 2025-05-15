@@ -25,7 +25,7 @@ def compare_metrics(df_base: pd.DataFrame, df_best: pd.DataFrame) -> dict:
     # Print results
     for metric, count in counts.items():
         direction = ">" if "acc" in metric else "<"
-        print(f"Rows where eval/{metric}_best {direction} eval/{metric}_base: {count}")
+        print(f"Rows where test/{metric}_best {direction} test/{metric}_base: {count}")
     print("\n" + "-" * 50 + "\n")
     return counts
 
@@ -174,21 +174,23 @@ def process_and_compare_summary(file_path: str, name: str):
         "group",
         "reg",
         "lamb",
-        "eval/top1_acc",
-        "eval/top5_acc",
+        "test/top1_acc",
+        "test/top5_acc",
+        "test/L",
+        "test/var",
+        "test/ece",
         "eval/L",
-        "eval/var",
-        "eval/ece",
     ]
     df = df[selected_cols]
 
     df.rename(
         columns={
-            "eval/top1_acc": "top1_acc",
-            "eval/top5_acc": "top5_acc",
-            "eval/L": "L",
-            "eval/var": "var",
-            "eval/ece": "ece",
+            "test/top1_acc": "top1_acc",
+            "test/top5_acc": "top5_acc",
+            "test/L": "L",
+            "test/var": "var",
+            "test/ece": "ece",
+            "eval/L": "L_eval",
         },
         inplace=True,
     )
@@ -198,16 +200,22 @@ def process_and_compare_summary(file_path: str, name: str):
     base_df.drop(columns=["reg", "lamb"], inplace=True)
 
     reg_df = df[df["reg"] != 0]
+    reg_df = reg_df[reg_df["reg"] != 8]
+    #reg_df = reg_df[reg_df["reg"] != 3]
     
+    reg_df = reg_df[reg_df["lamb"] != 0.001]
+    #reg_df = reg_df[reg_df["lamb"] != 0.01]
+    reg_df = reg_df[reg_df["lamb"] != 2.0]
+
     reg3_df = reg_df[reg_df["reg"] == 3]
     reg4_df = reg_df[reg_df["reg"] == 4]
     reg5_df = reg_df[reg_df["reg"] == 5]
 
     # Get best by lowest L in each group
-    reg_df_best = reg_df.loc[reg_df.groupby("group")["L"].idxmin()]
-    reg3_df_best = reg3_df.loc[reg3_df.groupby("group")["L"].idxmin()]
-    reg4_df_best = reg4_df.loc[reg4_df.groupby("group")["L"].idxmin()]
-    reg5_df_best = reg5_df.loc[reg5_df.groupby("group")["L"].idxmin()]
+    reg_df_best = reg_df.loc[reg_df.groupby("group")["L_eval"].idxmin()]
+    reg3_df_best = reg3_df.loc[reg3_df.groupby("group")["L_eval"].idxmin()]
+    reg4_df_best = reg4_df.loc[reg4_df.groupby("group")["L_eval"].idxmin()]
+    reg5_df_best = reg5_df.loc[reg5_df.groupby("group")["L_eval"].idxmin()]
 
     # show filtered df
     print("\n" + "-" * 50 + "\n")
@@ -239,7 +247,7 @@ def process_and_compare_summary(file_path: str, name: str):
     for lamb in lambda_values:
         print(f"\nFor lambda = {lamb}:")
         lambda_df = reg_df[reg_df["lamb"] == lamb]
-        lambda_df = lambda_df.loc[lambda_df.groupby("group")["L"].idxmin()]
+        lambda_df = lambda_df.loc[lambda_df.groupby("group")["L_eval"].idxmin()]
         print(f"Best among lambda = {lamb}")
         comparison_results[f'lambda_{lamb}'] = compare_metrics(base_df, lambda_df)
     
@@ -251,11 +259,10 @@ def process_and_compare_summary(file_path: str, name: str):
     print(summary_table)
 
 
-
 # for cifar10 data
-print("below is the result for cifar10:")
-process_and_compare_summary("summary_cifar10.csv", "cifar10")
+#print("below is the result for cifar10:")
+#process_and_compare_summary("results_cifar10.csv", "cifar10_validation")
 
 # for cifar100 data
 print("below is the result for cifar100:")
-process_and_compare_summary("summary_cifar100.csv", "cifar100")
+process_and_compare_summary("results_cifar100.csv", "cifar100_validation")
