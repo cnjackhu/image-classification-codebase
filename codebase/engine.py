@@ -30,6 +30,15 @@ from regularizers import compute_regularizer
 
 scaler = None
 
+def get_num_classes(dataset):
+    # If dataset has .classes → use it
+    if hasattr(dataset, 'classes'):
+        return len(dataset.classes)
+    # If it's a Subset, check its underlying dataset
+    elif hasattr(dataset, 'dataset') and hasattr(dataset.dataset, 'classes'):
+        return len(dataset.dataset.classes)
+    else:
+        raise ValueError("Dataset does not expose class labels via `.classes`")
 
 def _run_one_epoch(
     is_training: bool,
@@ -59,7 +68,7 @@ def _run_one_epoch(
     gradident_accumulator = GradientAccumulator(
         steps=accmulated_steps, enabled=is_training
     )
-    num_classes = len(loader.dataset.classes)
+    num_classes = get_num_classes(loader.dataset)
     ece = MulticlassCalibrationError(num_classes=num_classes, n_bins=10, norm="l1")
     mce = MulticlassCalibrationError(num_classes=num_classes, n_bins=10, norm="max")
     all_probs = []

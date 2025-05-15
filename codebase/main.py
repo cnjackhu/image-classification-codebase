@@ -54,7 +54,6 @@ def excute_pipeline(
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
-    # state_ckpt: StateCheckPoint,
     states: dict,
     metric_store: MetricsStore,
     output_dir: Path,
