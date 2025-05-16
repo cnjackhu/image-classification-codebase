@@ -115,10 +115,10 @@ def prepare_filtered_df(df_base: pd.DataFrame, df_best: pd.DataFrame, output_fil
     # Define the valid groups
     valid_groups = [
         "resnet32",
-        "vgg16_bn",
+        "vgg19_bn",
         "mobilenetv2_x0_75",
-        "shufflenetv2_x1_0",
-        "repvgg_a1",
+        "shufflenetv2_x0_5",
+        "repvgg_a0",
     ]
     
     # Filter for valid groups without setting index
@@ -183,6 +183,9 @@ def process_and_compare_summary(file_path: str, name: str):
     ]
     df = df[selected_cols]
 
+    # short the rows of df by name column
+    df = df.sort_values(by="name")
+
     df.rename(
         columns={
             "test/top1_acc": "top1_acc",
@@ -203,8 +206,8 @@ def process_and_compare_summary(file_path: str, name: str):
     reg_df = reg_df[reg_df["reg"] != 8]
     #reg_df = reg_df[reg_df["reg"] != 3]
     
-    reg_df = reg_df[reg_df["lamb"] != 0.001]
-    #reg_df = reg_df[reg_df["lamb"] != 0.01]
+    #reg_df = reg_df[reg_df["lamb"] != 0.001]
+    #reg_df = reg_df[reg_df["lamb"] != 0.5]
     reg_df = reg_df[reg_df["lamb"] != 2.0]
 
     reg3_df = reg_df[reg_df["reg"] == 3]
@@ -253,15 +256,20 @@ def process_and_compare_summary(file_path: str, name: str):
     
     # Create and save summary table
     summary_table = create_summary_latex_table(comparison_results, name.upper(), lambda_values)
+    with open(f"tables/{name}_lambda_summary.tex", "w") as f:
+        f.write(summary_table)
+    print("\nSummary table content:")
+    print(summary_table)
+
+    summary_table = create_summary_latex_table(comparison_results, name.upper(), [])
     with open(f"tables/{name}_summary.tex", "w") as f:
         f.write(summary_table)
     print("\nSummary table content:")
     print(summary_table)
 
-
 # for cifar10 data
-#print("below is the result for cifar10:")
-#process_and_compare_summary("results_cifar10.csv", "cifar10_validation")
+print("below is the result for cifar10:")
+process_and_compare_summary("results_cifar10.csv", "cifar10_validation")
 
 # for cifar100 data
 print("below is the result for cifar100:")
