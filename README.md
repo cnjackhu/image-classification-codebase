@@ -2,14 +2,15 @@
 
 
 
-## Get Started
+### Get Started
 install the packges by running  ` pip install -r requirements.txt `
+
 
 
 **Single node, single GPU:**
 
 ```bash
-python -m entry.run1 --conf conf/cifar10.conf -M reg=0 lamb=0.1 sweep_name=cifar10_may12 max_epochs=200
+python -m entry.run1 --conf conf/cifar10.conf -M reg=0 lamb=0.1 sweep_name=cifar10 max_epochs=200
 ```
 
 **SLURM Job Array: Reg-Lambda Sweep for CIFAR10/CIFAR100 Training**
@@ -18,7 +19,7 @@ The `test_array.sh` is a SLURM job array script to run a hyperparameter sweep ac
 
 ---
 
-## 🔧 Script Overview
+### 🔧 Script Overview
 
 The `test_array.sh` script is designed for use on a GPU-enabled HPC cluster and schedules **18 jobs** using SLURM’s job array functionality.
 
@@ -33,7 +34,7 @@ You can change the combination of configuration as you need. Make sure `#SBATCH 
 
 ---
 
-## 🧠 SLURM Resource Configuration
+###  SLURM Resource Configuration
 ```bash
 #SBATCH --time=12:00:00
 #SBATCH --nodes=1
@@ -47,8 +48,9 @@ You can change the combination of configuration as you need. Make sure `#SBATCH 
 #SBATCH --array=0-17
 ```
 
+The  `test_ablation.sh`  script is designed for an ablation study that systematically evaluates how model performance changes when the hyperparameters — weight decay (wd) , lambda (lamb) and data augmentation (data_aug) — are varied 
 
-## Features
+### Features
 
 This codebase adopt configuration file (`.hocon`) to store the hyperparameters (such as the learning rate, training epochs and etc.).
 If you want to modify the configuration hyperparameters, you have two ways:
@@ -71,5 +73,14 @@ To list all valid hyperparameters names, you can run the following command:
 ```bash
 pyhocon -i conf/cifar10.conf -f properties
 ```
+`summary_cifar10.csv` and `summary_cifar100.csv` is the summary metric for each model for a specific hyperparameter, it records the metric for the last epoch(200).
 
+`results_cifar10.csv` and `results_cifar100.csv` record the  metric for every model in validation data and test data. 
 
+`val_test_metric.py` generate the results `results_cifar10.csv` and `results_cifar100.csv`, it's input is model after trained for 200 epochs. The models are saved in the folder `output_cifar10` and `output_cifar100`.
+
+`table_validation.py` is used to process `results_cifar10.csv` and `results_cifar100.csv` and generate the latex table in the paper, the generated latex file is in folder `tables`.
+
+the `wandb_L_alphD.py` is the script to generate the csv files to be used in the ablation study plot in the paper. It reads data from ablation study recorded in wandb and it generates the `L.csv` and `alphaD.csv` files.
+
+`L.csv` and `alphaD.csv` is used by the `figure.ipynb` to generate the figure `ablation_ir.pdf` and `ablation_nll.pdf` used in the paper.
