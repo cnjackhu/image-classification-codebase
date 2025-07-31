@@ -267,10 +267,11 @@ def process_and_compare_summary(file_path: str, name: str):
     print("\nSummary table content:")
     print(summary_table)
 
+if __name__ == "__main__":
 # for cifar10 data
-print("below is the result for cifar10:")
-process_and_compare_summary("results_cifar10.csv", "cifar10_validation")
+    print("below is the result for cifar10:")
+    process_and_compare_summary("results_cifar10.csv", "cifar10_validation")
 
 # for cifar100 data
-print("below is the result for cifar100:")
-process_and_compare_summary("results_cifar100.csv", "cifar100_validation")
+    print("below is the result for cifar100:")
+    process_and_compare_summary("results_cifar100.csv", "cifar100_validation")
