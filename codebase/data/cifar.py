@@ -5,7 +5,8 @@ from torchvision.datasets import CIFAR10, CIFAR100
 
 from .utils import get_samplers
 from .register import DATA
-
+import numpy as np
+from torch.utils.data import Subset
 
 _logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ def get_vit_val_transforms(mean, std, img_size):
 
 
 def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset_builder, aug,**kwargs):
+    # --- 1. Get Transform pipelines ---
     if is_vit:
         train_transforms = get_vit_train_transforms(mean, std, image_size)
         val_transforms = get_vit_val_transforms(mean, std, image_size)
@@ -53,11 +55,35 @@ def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset
         else:
             train_transforms =  get_val_transforms(mean, std)
             val_transforms = get_val_transforms(mean, std)
-    trainset = dataset_builder(root, train=True, transform=train_transforms, download=True)
-    valset = dataset_builder(root, train=False, transform=val_transforms, download=True)
+    # --- 2. Load the full training set TWICE ---
+    # We load it twice: once with training transforms, once with validation transforms.
+    # This is the standard way to handle splitting with different transforms.
+    breakpoint()
+    train_dataset_with_aug = dataset_builder(root, train=True, transform=train_transforms, download=True)
+    train_dataset_no_aug = dataset_builder(root, train=True, transform=val_transforms, download=True)
 
-    _logger.info(f"Loading {dataset_builder.__name__} dataset with trainset (len={len(trainset)}) and valset (len={len(valset)})")
+    # --- 3. Create 90/10 split indices ---
+    num_train = len(train_dataset_with_aug)
+    indices = list(range(num_train))
+    split = int(np.floor(0.1 * num_train))  # 10% for validation
 
+    # We use a fixed seed for reproducible splits.
+    # You might want to pass this seed as an argument.
+    np.random.seed(42)
+    np.random.shuffle(indices)
+
+    train_idx, val_idx = indices[split:], indices[:split]
+
+    # --- 4. Create the new Subset datasets ---
+    # The trainset (90%) uses the dataset WITH augmentations
+    trainset = Subset(train_dataset_with_aug, train_idx)
+    # The valset (10%) uses the dataset WITHOUT augmentations
+    valset = Subset(train_dataset_no_aug, val_idx)
+    _logger.info(f"Loading {dataset_builder.__name__} dataset.")
+    _logger.info(f"  Total original training images: {num_train}")
+    _logger.info(f"  Splitting into 90% trainset (len={len(trainset)}) and 10% valset (len={len(valset)})")
+    _logger.info(f"  The original test set (train=False) is NOT used.")
+    # --- 5. Create Samplers and DataLoaders (unchanged) ---
     train_sampler = get_samplers(trainset, is_training=True)
     val_sampler = get_samplers(valset, is_training=False)
 
