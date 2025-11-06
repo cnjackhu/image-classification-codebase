@@ -58,7 +58,6 @@ def _cifar(root, image_size, mean, std, batch_size, num_workers, is_vit, dataset
     # --- 2. Load the full training set TWICE ---
     # We load it twice: once with training transforms, once with validation transforms.
     # This is the standard way to handle splitting with different transforms.
-    breakpoint()
     train_dataset_with_aug = dataset_builder(root, train=True, transform=train_transforms, download=True)
     train_dataset_no_aug = dataset_builder(root, train=True, transform=val_transforms, download=True)
 

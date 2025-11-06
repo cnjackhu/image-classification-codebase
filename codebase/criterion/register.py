@@ -4,3 +4,4 @@ from codebase.torchutils.register import Register
 CRITERION = Register("criterion")
 
 CRITERION.register(nn.CrossEntropyLoss)
+CRITERION.register(nn.MultiMarginLoss)
