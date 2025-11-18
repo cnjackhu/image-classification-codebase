@@ -231,13 +231,18 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
         config["job_id"] = f"{array_job_id}_{array_task_id}"
     else:
         config["job_id"] = slurm_job_id
+    # define the celoss
+    if config["criterion"]["type_"] == "MultiMarginLoss":
+        config["celoss"] = 0
+    else:
+        config["celoss"] = 1
     # Define keys to include in sweep config (add your new key here)
-    keys = ["reg", "lamb", "job_id", "wd", "data_aug"]
+    keys = ["reg", "lamb", "job_id", "wd", "data_aug", "celoss"]
     run = wandb.init(config=config, config_include_keys=keys)
     # Logging
     print(
         f"reg={config['reg']}, lamb={config['lamb']}, job_id={config['job_id']},\
-    weight_decay={config['wd']},data_aug={config['data_aug']}"
+    weight_decay={config['wd']},data_aug={config['data_aug']},celoss={config['celoss']}"
     )
     # change the model_name in conf according to the sweep configuration
     conf.put("model.name", wandb.config.sweep_model)
@@ -252,10 +257,10 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     wandb.run.tags = [model_name]
 
     # set output_dir
-    #args.output_dir = args.output_dir / hyper_name / model_name
-    #args.output_dir.mkdir(parents=True, exist_ok=True)
+    # args.output_dir = args.output_dir / hyper_name / model_name
+    # args.output_dir.mkdir(parents=True, exist_ok=True)
     # Create the full path
-    save_path = Path(args.output_dir) / model_name/ hyper_name 
+    save_path = Path(args.output_dir) / model_name / hyper_name
 
     # Make sure the directory exists
     save_path.mkdir(parents=True, exist_ok=True)
