@@ -17,6 +17,5 @@ def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
     print(f"Saved to {output_csv} with {len(df)} rows.")
 
 # Example usage
-export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
-
-#export_wandb_runs_to_csv("jackhu0119", "april1_cifar10", "summary_cifar10.csv")
+#export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
+export_wandb_runs_to_csv("jackhu0119", "cifar10_nov", "summary_cifar10.csv")
