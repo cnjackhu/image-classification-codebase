@@ -164,9 +164,13 @@ def create_summary_latex_table(comparison_results: dict, dataset_name: str, lamb
     return latex_table
 
 
-def process_and_compare_summary(file_path: str, name: str):
+def process_and_compare_summary(file_path: str, name: str,celoss:int):
     # Load and preprocess
     df = pd.read_csv(file_path)
+    # select if celoss or margin loss
+    print(f"celoss is {celoss}")
+    df = df[df["celoss"] == celoss]
+
     df["group"] = df["name"].str.split("-").str[0]
 
     selected_cols = [
