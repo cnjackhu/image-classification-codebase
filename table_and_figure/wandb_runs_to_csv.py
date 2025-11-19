@@ -2,6 +2,9 @@ import pandas as pd
 import wandb
 
 def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
+    """
+    get wandb runs and save it to csv, wandb runs contain train and val metrics
+    """
     api = wandb.Api()
     runs = api.runs(f"{entity}/{project}")
 
@@ -13,9 +16,10 @@ def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
         all_data.append(row)
 
     df = pd.DataFrame(all_data)
-    df.to_csv(output_csv, index=False)
+    #df.to_csv('csv'/output_csv, index=False)
+    df.to_csv(f"csv/{output_csv}", index=False)
     print(f"Saved to {output_csv} with {len(df)} rows.")
 
 # Example usage
 #export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
-export_wandb_runs_to_csv("jackhu0119", "cifar10_nov", "summary_cifar10.csv")
+export_wandb_runs_to_csv("jackhu0119", "cifar10_nov", "wandb_cifar10.csv")
