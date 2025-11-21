@@ -1,10 +1,24 @@
+import os
 import pandas as pd
 import wandb
 
 def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
     """
-    get wandb runs and save it to csv, wandb runs contain train and val metrics
+    Retrieve Weights & Biases (W&B) runs and export their configurations and
+    summary metrics to a CSV file. The CSV file is always saved to a 'csv'
+    directory located in the same folder as this script, regardless of the
+    current working directory.
     """
+    # Absolute path to the directory containing this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Path to the 'csv' folder beside the script
+    csv_dir = os.path.join(script_dir, "csv")
+    os.makedirs(csv_dir, exist_ok=True)
+
+    # Full output path
+    output_path = os.path.join(csv_dir, output_csv)
+
     api = wandb.Api()
     runs = api.runs(f"{entity}/{project}")
 
@@ -16,10 +30,9 @@ def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
         all_data.append(row)
 
     df = pd.DataFrame(all_data)
-    #df.to_csv('csv'/output_csv, index=False)
-    df.to_csv(f"csv/{output_csv}", index=False)
-    print(f"Saved to {output_csv} with {len(df)} rows.")
+    df.to_csv(output_path, index=False)
 
-# Example usage
-#export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
-export_wandb_runs_to_csv("jackhu0119", "cifar10_nov", "wandb_cifar10.csv")
+    print(f"Saved to {output_path} with {len(df)} rows.")
+# Example usage:
+# export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
+export_wandb_runs_to_csv("jackhu0119", "cifar100_nov", "wandb_cifar100.csv")
