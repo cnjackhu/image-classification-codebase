@@ -19,7 +19,7 @@ def train_results(dataset: str):
     """
     train_file = f"wandb_{dataset}.csv"
     #results_file = f"results_{dataset}.csv"
-    test_file = f"test_{dataset}+celoss_combined.csv"
+    test_file = f"test_{dataset}.csv"
     combined_file = f"{dataset}.csv"
 
     # Load data
@@ -44,12 +44,12 @@ def train_results(dataset: str):
     #return merged_df
 # Only need to specify dataset 
 base="table_and_figure/csv/"
-train_results("cifar10")
+train_results("cifar100")
 #train_results("cifar100")
 
 # for cifar10 data
-#print("below is the result for cifar10:with celoss=0")
-process_and_compare_summary(base+"cifar10.csv", "cifar10_train",1)
+print("below is the result for cifar10:with celoss=1")
+process_and_compare_summary(base+"cifar100.csv", "cifar100_train",1)
 
 # for cifar100 data
 #print("below is the result for cifar100:")

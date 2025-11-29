@@ -5,6 +5,7 @@ import pandas as pd
 import argparse
 import torch.nn as nn
 import sys
+import os
 # Assuming this script is located in a subdirectory (e.g., table_and_figure)
 # We add the project root (one level up) to sys.path
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -106,20 +107,27 @@ if __name__ == "__main__":
     
     # Pass the new argument to the function
     #run_model_evaluation(args.dataset, args.celoss, args.root_dir)
-    df0 = run_model_evaluation('cifar10',0,'output10')
-    df1 = run_model_evaluation('cifar10',1,'output_ce')
+    #df0 = run_model_evaluation('cifar10',0,'output10')
+    df1 = run_model_evaluation('cifar100',1,'output_100')
     #after above combine the 2 csv file
     # Load the two CSV files
     #df0 = pd.read_csv("table_and_figure/csv/test_cifar10+celoss_0.csv", index_col=0)
     #df1 = pd.read_csv("table_and_figure/csv/test_cifar10+celoss_1.csv", index_col=0)
 
     # Add the indicator column
-    df0["celoss"] = 0
+    #df0["celoss"] = 0
     df1["celoss"] = 1
-
+    df1 = df1.rename(columns={"model": "name"})
     # Concatenate the datasets
-    df_combined = pd.concat([df0, df1], axis=0, ignore_index=True)
-    df_combined = df_combined.rename(columns={"model": "name"})
+    #df_combined = pd.concat([df0, df1], axis=0, ignore_index=True)
+    #df_combined = df_combined.rename(columns={"model": "name"})
 
-    # Save the merged file
-    df_combined.to_csv("table_and_figure/csv/test_cifar10+celoss_combined.csv", index=False)
+   
+    # Absolute path to the directory containing this script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    # Path to the 'csv' folder beside the script
+    csv_dir = os.path.join(script_dir, "csv")
+    os.makedirs(csv_dir, exist_ok=True)
+    # Full output path
+    output_path = os.path.join(csv_dir,"test_cifar100.csv")
+    df1.to_csv(output_path, index=False)

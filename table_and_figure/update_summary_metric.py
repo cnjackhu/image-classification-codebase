@@ -25,5 +25,5 @@ def update_wandb_run_summaries(entity: str, project: str, metrics: list[str] = N
 
 # Example usage:
 # update_wandb_run_summaries("jackhu0119", "april2_cifar100")       
-update_wandb_run_summaries("jackhu0119", "cifar10_nov") 
+update_wandb_run_summaries("jackhu0119", "cifar100_nov") 
 
