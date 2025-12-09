@@ -218,6 +218,9 @@ def _init(local_rank: int, ngpus_per_node: int, args: Args):
 
 def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTree):
     conf.put("data.aug", conf.data_aug)
+    # update wd 
+    if conf.lamb_wd == True:
+        conf.put("wd",conf.wd / conf.lamb)
     conf.put("optimizer.weight_decay", conf.wd)
     config = json.loads(HOCONConverter.convert(conf, "json"))
     # Initialize wandb
@@ -237,7 +240,7 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     else:
         config["celoss"] = 1
     # Define keys to include in sweep config (add your new key here)
-    keys = ["reg", "lamb", "job_id", "wd", "data_aug", "celoss"]
+    keys = ["reg", "lamb", "job_id", "wd", "data_aug", "celoss","lamb_wd"]
     run = wandb.init(config=config, config_include_keys=keys)
     # Logging
     print(
