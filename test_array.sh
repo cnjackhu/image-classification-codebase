@@ -1,5 +1,5 @@
 #!/bin/bash --login
-#SBATCH --time=12:00:00
+#SBATCH --time=14:00:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --cpus-per-gpu=6
@@ -30,5 +30,6 @@ echo "Running with $PARAMS"
 #python -m entry.run1 --conf conf/cifar10.conf -o output_41 -M $PARAMS sweep_name=april1 max_epochs=200
 #for cifar100
 #python -m entry.run1 --conf conf/cifar100.conf -M $PARAMS sweep_name=april2_cifar100 max_epochs=200
+#for margin loss, criterion.type_=MultiMarginLoss
 python -m entry.run1 \
-    --conf conf/cifar100.conf -o output100 -M $PARAMS sweep_name=cifar100_may13 max_epochs=200
+  --conf conf/cifar100.conf -o output_100 -M $PARAMS lamb_wd=true sweep_name=cifar100_dec max_epochs=200

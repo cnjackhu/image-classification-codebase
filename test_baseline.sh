@@ -1,5 +1,5 @@
 #!/bin/sh --login
-#SBATCH --time=12:00:00
+#SBATCH --time=14:00:00
 #SBATCH --nodes=1
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --cpus-per-gpu=6
@@ -20,5 +20,9 @@ conda activate torch
 #     sweep_name=imagenet
 
 # python -m entry.run1 --conf conf/cifar10.conf -M reg=0 lamb=0.1 sweep_name=cifar10_may12 max_epochs=200
-python -m entry.run11 \
-    --conf conf/cifar100.conf -o output100 -M reg=0 lamb=0 sweep_name=cifar100_may13 max_epochs=200 #', 'vit_b32', 'vit_h14', 'vit_l16', 'vit_l32']
+# criterion.type_=MultiMarginLoss
+# python -m entry.run1 \
+#   --conf conf/cifar100.conf -o output_100 -M reg=0 lamb=0.2 sweep_name=cifar100_nov max_epochs=200 
+
+python -m entry.run1 \
+  --conf conf/cifar10.conf -o out -M reg=0 lamb_wd=true lamb=0.1  sweep_name=delete max_epochs=2

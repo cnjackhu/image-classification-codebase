@@ -47,8 +47,7 @@ if __name__ == "__main__":
     else:
         raise ValueError("Unsupported number of classes")
     # Selectively enable models (you can modify this list if needed)
-
-    selected_models=base_models
+    selected_models = base_models
     sweep_configuration["parameters"]["sweep_model"]["values"] = [
         prefix + model for model in selected_models
     ]

@@ -84,3 +84,40 @@ pyhocon -i conf/cifar10.conf -f properties
 the `wandb_L_alphD.py` is the script to generate the csv files to be used in the ablation study plot in the paper. It reads data from ablation study recorded in wandb and it generates the `L.csv` and `alphaD.csv` files.
 
 `L.csv` and `alphaD.csv` is used by the `figure.ipynb` to generate the figure `ablation_ir.pdf` and `ablation_nll.pdf` used in the paper.
+
+
+
+
+
+
+
+
+
+---
+
+# 🚀 Experiment Workflow Pipeline
+
+Follow the steps below to process data, generate test metrics, and validate the final results.
+
+---
+
+### 1️⃣ Update Summary Metrics
+First, update the summary metrics to ensure the latest training data is captured.
+`python update_summary_metric.py` 
+
+### 2️⃣ Export WandB Data
+Export the experiment runs from Weights & Biases to a CSV format.
+`python wandb_runs_to_csv.py`
+
+### 3️⃣ Generate Test Results
+Run the testing script to evaluate model performance on the test set.
+`python test_metric.py`
+
+### 4️⃣ Baseline Verification
+Check if the baseline data is present in the output CSV.
+
+> **⚠️ Important:** If the baseline is **not** inside the CSV, navigate to the `csv/` folder and run the corresponding Jupyter Notebook (`.ipynb`).
+
+### 5️⃣ Final Validation
+Finally, run the validation script to merge train and test data and generate the final result tables.
+`python combine_train_test.py`

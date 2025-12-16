@@ -2,12 +2,14 @@ import os
 import pandas as pd
 import wandb
 
-def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
+def export_wandb_runs_to_csv(entity, project, suffix):
     """
     Retrieve Weights & Biases (W&B) runs and export their configurations and
-    summary metrics to a CSV file. The CSV file is always saved to a 'csv'
-    directory located in the same folder as this script, regardless of the
-    current working directory.
+    summary metrics to a CSV file. 
+    
+    The filename is determined automatically:
+    - If project contains 'cifar100' -> wandb_cifar100_{suffix}.csv
+    - If project contains 'cifar10'  -> wandb_cifar10_{suffix}.csv
     """
     # Absolute path to the directory containing this script
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -16,8 +18,20 @@ def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
     csv_dir = os.path.join(script_dir, "csv")
     os.makedirs(csv_dir, exist_ok=True)
 
-    # Full output path
+    # Determine output filename based on project name
+    # We check cifar100 first because 'cifar100' string contains 'cifar10'
+    if "cifar100" in project:
+        dataset_name = "cifar100"
+    elif "cifar10" in project:
+        dataset_name = "cifar10"
+    else:
+        # Fallback if neither is found (optional, using project name)
+        dataset_name = project
+
+    output_csv = f"wandb_{dataset_name}_{suffix}.csv"
     output_path = os.path.join(csv_dir, output_csv)
+
+    print(f"Fetching runs for {project}... Target file: {output_csv}")
 
     api = wandb.Api()
     runs = api.runs(f"{entity}/{project}")
@@ -33,6 +47,8 @@ def export_wandb_runs_to_csv(entity, project, output_csv="summary.csv"):
     df.to_csv(output_path, index=False)
 
     print(f"Saved to {output_path} with {len(df)} rows.")
+
 # Example usage:
-# export_wandb_runs_to_csv("jackhu0119", "april2_cifar100", "summary_cifar100.csv")
-export_wandb_runs_to_csv("jackhu0119", "cifar100_nov", "wandb_cifar100.csv")
+# If project is "cifar100_dec" and suffix is "lamb_wd", 
+# output will be "wandb_cifar100_lamb_wd.csv"
+export_wandb_runs_to_csv("jackhu0119", "cifar10_lamb_wd", "lamb_wd")
