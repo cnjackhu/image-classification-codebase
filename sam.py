@@ -5,8 +5,8 @@ class SAM(torch.optim.Optimizer):
         assert rho >= 0.0, f"Invalid rho, should be non-negative: {rho}"
 
         defaults = dict(rho=rho, adaptive=adaptive, **kwargs)
-        super(SAM, self).__init__(params, defaults)
-
+        # We initialize the parent class with the *existing* param_groups from your optimizer
+        super(SAM, self).__init__(base_optimizer.param_groups, defaults)
         self.base_optimizer = base_optimizer
         self.param_groups = self.base_optimizer.param_groups
         self.defaults.update(self.base_optimizer.defaults)
