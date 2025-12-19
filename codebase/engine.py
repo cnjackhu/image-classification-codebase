@@ -115,7 +115,7 @@ def _run_one_epoch(
                     train_onlinecumulant.update_losses(train_losses.clone().to(device))
 
                     # Calculate regularizer and batch loss
-                    if reg == 0:
+                    if reg == 0 or reg == 10:
                         batch_loss = torch.mean(train_losses)
                         regularizer = 0
                     elif reg == 3:
@@ -182,7 +182,27 @@ def _run_one_epoch(
                     # maybe should caculate the lambda_star here
 
         # Backward pass and optimization
-        gradident_accumulator.backward_step(model, loss, optimizer, scaler)
+        # ============================================================
+        # [CHANGE] Implement SAM specific backward logic (reg=10)
+        if is_training and reg == 10:
+            # 1. First Backward (using loss from first forward pass)
+            scaler.scale(loss).backward()
+            # 2. First Step: Find the sharpest direction
+            scaler.unscale_(optimizer)  # Important: Unscale before calculating norm
+            optimizer.first_step(zero_grad=True)
+            # 3. Second Forward: Calculate loss at the sharpest point
+            with autocast(enabled=use_amp and is_training):
+                outputs_2 = model(inputs)
+                loss_2 = criterion(outputs_2, targets).mean()
+            # 4. Second Backward 
+            scaler.scale(loss_2).backward()  
+            # 5. Second Step: Update weights & Update Scaler
+            optimizer.second_step(zero_grad=True)
+            scaler.update()
+        else:
+            # Original Logic
+            gradident_accumulator.backward_step(model, loss, optimizer, scaler)
+        # ============================================================
         # caculate calibration error
         probs = F.softmax(outputs.detach(), dim=1)
         all_probs.append(probs)

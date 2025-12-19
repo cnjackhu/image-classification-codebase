@@ -12,7 +12,7 @@ import torch.nn as nn
 import torch.utils.data
 from pyhocon import ConfigTree, HOCONConverter
 from torch.utils.collect_env import get_pretty_env_info
-
+from sam import SAM
 import wandb
 from codebase.config import Args
 from codebase.criterion import CRITERION
@@ -137,6 +137,23 @@ def prepare_for_training(conf: ConfigTree, local_rank: int):
     optimizer = OPTIMIZER.build_from(
         optimizer_config, dict(params=model.named_parameters())
     )
+    # ============================================================
+    # [ADDED] Wrap with SAM if reg == 10
+    # ============================================================
+    if conf.get("reg") == 10:
+        print(f"Wrapping {type(optimizer).__name__} with SAM Optimizer (reg=10)")
+        
+        # We pass the *instance* of the optimizer we just built.
+        # The modified SAM class will inherit its param_groups and settings.
+        optimizer = SAM(
+            
+            base_optimizer=optimizer, 
+            rho=0.05, 
+            adaptive=False
+        )
+    # ============================================================
+    
+
     print(
         f"Set lr={optimizer_config['lr']:.4f} with batch size={conf.get('data.batch_size') * world_size()}"
     )
