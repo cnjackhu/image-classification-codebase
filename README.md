@@ -73,29 +73,23 @@ To list all valid hyperparameters names, you can run the following command:
 ```bash
 pyhocon -i conf/cifar10.conf -f properties
 ```
-`summary_cifar10.csv` and `summary_cifar100.csv` is the summary metric for each model for a specific hyperparameter, it records the metric for the last epoch(200).
+The results are stored in table_and_figure/csv folder,
+`wandb_cifar10_{suffix}.csv` and `wandb_cifar100_{suffix}.csv` is the metric for each model for a specific hyperparameter, it records the train and validation data metric for the last epoch(200).
 
-`results_cifar10.csv` and `results_cifar100.csv` record the  metric for every model in validation data and test data. 
+`test_cifar10_{suffix}.csv` and `test_cifar100_{suffix}.csv` record the  metric for every model in test sets. 
 
-`val_test_metric.py` generate the results `results_cifar10.csv` and `results_cifar100.csv`, it's input is model after trained for 200 epochs. The models are saved in the folder `output_cifar10` and `output_cifar100`.
+`combine_train_test.py` combine the train_vali metric and test metric, generate the results `cifar10.csv_{suffix}` and `cifar100_{suffix}.csv`.
 
-`table_validation.py` is used to process `results_cifar10.csv` and `results_cifar100.csv` and generate the latex table in the paper, the generated latex file is in folder `tables`.
+`table_validation.py` is used to process `cifar10.csv_{suffix}` and `cifar100_{suffix}.csv`, generate the latex table in the paper, the generated latex file is in folder `tables`.
 
 the `wandb_L_alphD.py` is the script to generate the csv files to be used in the ablation study plot in the paper. It reads data from ablation study recorded in wandb and it generates the `L.csv` and `alphaD.csv` files.
 
 `L.csv` and `alphaD.csv` is used by the `figure.ipynb` to generate the figure `ablation_ir.pdf` and `ablation_nll.pdf` used in the paper.
 
 
-
-
-
-
-
-
-
 ---
 
-# 🚀 Experiment Workflow Pipeline
+# 🚀 Generate Experiment results Workflow 
 
 Follow the steps below to process data, generate test metrics, and validate the final results.
 
