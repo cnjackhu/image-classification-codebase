@@ -8,7 +8,6 @@ data/
 dcgm
 wandb_test
 example.ipynb
-bin
 output
 delete
 entry/run_resnet*

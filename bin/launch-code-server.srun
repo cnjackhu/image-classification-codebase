@@ -1,0 +1,34 @@
+#!/bin/bash --login
+
+set -e
+
+# setup the environment
+PROJECT_DIR="/ibex/user/huj0b/"
+#ENV_PREFIX="$PROJECT_DIR"/env
+current_date_time=$(date)
+
+module purge
+conda activate torch
+
+# setup ssh tunneling
+COMPUTE_NODE=$(hostname -s)
+CODE_SERVER_PORT=$SLURM_STEP_RESV_PORTS
+
+echo "
+To connect to the compute node ${COMPUTE_NODE}, 
+create an ssh tunnel from your local machine to login node on Ibex 
+
+
+Current time: ${current_date_time}
+
+ssh -L ${CODE_SERVER_PORT}:${COMPUTE_NODE}:${CODE_SERVER_PORT} ${USER}@glogin.ibex.kaust.edu.sa 
+
+localhost:${CODE_SERVER_PORT}
+
+" >&2
+
+# launch code server
+code-server \
+  --user-data-dir /ibex/user/huj0b/opt/lib/code-server-config/ \
+  --extensions-dir /ibex/user/huj0b/opt/lib/code-server-config/extensions/ \
+  --auth none --bind-addr ${COMPUTE_NODE}:${CODE_SERVER_PORT} "$PROJECT_DIR"
