@@ -250,16 +250,57 @@ def combine_train_test_results(dataset: str, suffix: str = None):
     merged_df.to_csv(output_path, index=False)
     print(f"Merged results saved to: {combined_file}")
     print(f"below is the result for {dataset}:with celoss=1")
-    name= f"{dataset}{suffix}" # for name prefix in the generated tex file
-    #process_and_compare_summary(output_path, name, 1) # Using base + combined_file for the path
+    
+    # Check if both counts are exactly 19
+    if count_df1 == 19 and count_df2 == 19:
+        name= f"{dataset}{suffix}" # for name prefix in the generated tex file
+        process_and_compare_summary(output_path, name, 1)
+    else:
+        print("not enough baseline models, comparison fail")
 
 
 
 
-suffix="samm"
-dataset="cifar10"
-update_wandb_run_summaries(project="cifar10_sam")
-export_wandb_runs_to_csv(project="cifar10_sam", suffix=suffix)
-run_model_evaluation(dataset=dataset, root_dir='output_10(baseline_sam)', suffix=suffix)
-combine_train_test_results(dataset=dataset, suffix = suffix)
 
+# suffix="samm"
+# dataset="cifar10"
+# project= "cifar10_sam"
+# update_wandb_run_summaries(project=project)
+# export_wandb_runs_to_csv(project=project, suffix=suffix)
+# run_model_evaluation(dataset=dataset, root_dir='output_10(baseline_sam)', suffix=suffix)
+# combine_train_test_results(dataset=dataset, suffix = suffix)
+
+def run_experiment_pipeline(suffix: str, dataset: str, project: str, root_dir: str):
+    """
+    Runs the full experiment pipeline. All 4 arguments are required strings.
+    """
+    print(f"Starting pipeline for Wandb Project: {project}, Dataset: {dataset}, Suffix: {suffix}, Saved Model Directory: {root_dir}") 
+    # Placeholder calls to your actual functions
+    update_wandb_run_summaries(project=project)
+    export_wandb_runs_to_csv(project=project, suffix=suffix)
+    run_model_evaluation(dataset=dataset, root_dir=root_dir, suffix=suffix)
+    combine_train_test_results(dataset=dataset, suffix=suffix)
+    print("Pipeline completed successfully.")
+
+if __name__ == "__main__":
+    # 1. Initialize the parser
+    parser = argparse.ArgumentParser(description="Run the experiment pipeline helper.")
+
+    # 2. Define the arguments (All required=True)
+    parser.add_argument('--suffix', type=str, required=True, help="The suffix for the output files")
+    parser.add_argument('--dataset', type=str, required=True, help="The dataset name")
+    parser.add_argument('--project', type=str, required=True, help="The W&B project name")
+    parser.add_argument('--root_dir', type=str, required=True, help="Root directory for outputs")
+
+    # 3. Parse the arguments
+    args = parser.parse_args()
+
+    # 4. Call the function
+    run_experiment_pipeline(
+        suffix=args.suffix,
+        dataset=args.dataset,
+        project=args.project,
+        root_dir=args.root_dir
+    )
+
+    # python helper.py --suffix=samm --dataset=cifar10 --project=cifar10_sam --root_dir="output_10(baseline_sam)"
