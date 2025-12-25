@@ -1,22 +1,24 @@
 import pandas as pd
+import os
+import sys
 from table_validation import process_and_compare_summary
 
-base = "table_and_figure/csv/"
 
-def train_results(dataset: str, suffix: str = None):
+def combine_train_test_results(dataset: str, suffix: str = None):
     """
     Merge training summary and test results with optional suffix.
     """
     # Logic to handle the underscore
+    base = "table_and_figure/csv/"
     if suffix:
-        file_part = f"_{suffix}"
+        suffix = f"_{suffix}"
     else:
-        file_part = ""
+        suffix = ""
 
     # Construct filenames dynamically
-    train_file = f"wandb_{dataset}{file_part}.csv"
-    test_file = f"test_{dataset}{file_part}.csv"
-    combined_file = f"{dataset}{file_part}.csv"
+    train_file = f"wandb_{dataset}{suffix}.csv"
+    test_file = f"test_{dataset}{suffix}.csv"
+    combined_file = f"{dataset}{suffix}.csv"
 
     # Load data
     print(f"Processing: {train_file} + {test_file}")
@@ -40,23 +42,21 @@ def train_results(dataset: str, suffix: str = None):
     merged_df = pd.merge(df2, df1, on=["name", "reg", "lamb", "celoss"])
 
     # Save and return
-    merged_df.to_csv(base + combined_file, index=False)
+    output_path = base + combined_file
+    if os.path.exists(output_path): #avoid update generated results mistakenly
+        print(f"WARNING: File '{output_path}' already exists. Program aborted.")
+        sys.exit()  # This stops the script immediately
+    
+    merged_df.to_csv(output_path, index=False)
     print(f"Merged results saved to: {combined_file}")
     print(f"below is the result for {dataset}:with celoss=1")
-    name= f"{dataset}{file_part}" # for name identifier 
-    process_and_compare_summary(base + combined_file, name, 1) # Using base + combined_file for the path
+    name= f"{dataset}{suffix}" # for name prefix in the generated tex file
+    #process_and_compare_summary(output_path, name, 1) # Using base + combined_file for the path
 
 
 # --- Usage Examples ---
 # Case 1: With Suffix (Files: wandb_cifar100_lamb_wd.csv)
-train_results("cifar10", suffix="lamb_wd")
-
+#combine_train_test_results("cifar10", suffix="sam")
+#combine_train_test_results("cifar100", suffix="sam")
 # Case 2: No Suffix (Files: wandb_cifar100.csv)
-# train_results("cifar100")
-
-
-
-
-# for cifar100 data
-#print("below is the result for cifar100:")
-#process_and_compare_summary("train_results_cifar100.csv", "cifar100_train")
+# combine_train_test_results("cifar100")

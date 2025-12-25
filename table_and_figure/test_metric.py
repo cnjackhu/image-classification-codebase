@@ -13,21 +13,23 @@ sys.path.append(str(Path(__file__).resolve().parent.parent))
 from codebase.main import prepare_for_training
 from codebase.engine import evaluate_one_epoch
 
-def run_model_evaluation(dataset_name: str, use_celoss: int, root_dir: str, suffix: str = None):
+def run_model_evaluation(dataset: str, root_dir: str, suffix: str = None, use_celoss: int = 1,):
     """
     Evaluates models, processes results, and saves them to a CSV file.
 
     Args:
         dataset_name (str): 'cifar10' or 'cifar100'.
-        use_celoss (int): 0 or 1. If 1, uses MultiMarginLoss; otherwise uses CrossEntropyLoss.
+        use_celoss (int): 0 or 1. If 0, uses MultiMarginLoss; otherwise uses CrossEntropyLoss.
         root_dir (str): The path to the root directory containing model checkpoints.
         suffix (str, optional): Suffix for the output filename (e.g., 'lamb_wd').
+    Example:
+        run_model_evaluation(dataset_name='cifar10', root_dir='output_10', suffix='sam')
+        run_model_evaluation(dataset_name='cifar100', root_dir='output_100', suffix='sam')
     """
-    print(f"--- Starting Evaluation: Dataset={dataset_name}, CELoss={use_celoss} ---")
-
+    print(f"--- Starting Evaluation: Dataset={dataset}, CELoss={use_celoss} ---")
     # 1. Setup Configuration
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    conf_path = f'conf/{dataset_name}.conf'
+    conf_path = f'conf/{dataset}.conf'
     conf = ConfigFactory.parse_file(conf_path)
 
     # 2. Prepare Environment
@@ -38,7 +40,7 @@ def run_model_evaluation(dataset_name: str, use_celoss: int, root_dir: str, suff
         print("Overriding criterion: Using MultiMarginLoss")
         criterion = nn.MultiMarginLoss() 
     else:
-        print("Using default criterion from prepare_for_training (CrossEntropyLoss)")
+        print("Using default criterion (CrossEntropyLoss)")
 
     # 4. Run Evaluation Loop
     df = pd.DataFrame()
@@ -62,7 +64,7 @@ def run_model_evaluation(dataset_name: str, use_celoss: int, root_dir: str, suff
                     model_path = config_dir / 'epoch_200.pt'
                     
                     # Load Model
-                    model = torch.hub.load("chenyaofo/pytorch-cifar-models", f"{dataset_name}_{model_name}", pretrained=False)
+                    model = torch.hub.load("chenyaofo/pytorch-cifar-models", f"{dataset}_{model_name}", pretrained=False)
                     model = model.to(device)
                     model.load_state_dict(torch.load(model_path, weights_only=True))
                     model.eval()
@@ -95,13 +97,13 @@ def run_model_evaluation(dataset_name: str, use_celoss: int, root_dir: str, suff
     df["celoss"] = use_celoss
     df = df.rename(columns={"model": "name"})
     
-    print(f"--- Finished Evaluation: Dataset={dataset_name}, CELoss={use_celoss} ---")
+    print(f"--- Finished Evaluation: Dataset={dataset}, CELoss={use_celoss} ---")
 
     # 6. Save to CSV
     if suffix:
-        filename = f"test_{dataset_name}_{suffix}.csv"
+        filename = f"test_{dataset}_{suffix}.csv"
     else:
-        filename = f"test_{dataset_name}.csv"
+        filename = f"test_{dataset}.csv"
     
     script_dir = os.path.dirname(os.path.abspath(__file__))
     csv_dir = os.path.join(script_dir, "csv")
@@ -112,10 +114,3 @@ def run_model_evaluation(dataset_name: str, use_celoss: int, root_dir: str, suff
     print(f"Results saved to: {output_path}")
 
 
-if __name__ == "__main__":
-    run_model_evaluation(
-        dataset_name='cifar10', 
-        use_celoss=1, 
-        root_dir='output_10', 
-        suffix='lamb_wd'
-    )

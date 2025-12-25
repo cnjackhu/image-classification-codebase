@@ -1,6 +1,8 @@
 import wandb
+import argparse
 
-def update_wandb_run_summaries(entity: str, project: str, metrics: list[str] = None):
+
+def update_wandb_run_summaries(project: str, entity: str = "jackhu0119", metrics: list[str] = None):
     """
     Update the summary of all runs in a given Weights & Biases project with the last values
     of specified metrics from the history.
@@ -23,7 +25,6 @@ def update_wandb_run_summaries(entity: str, project: str, metrics: list[str] = N
         run.summary.update()
         print("Finished update for:", run.name)
 
-# Example usage:
-# update_wandb_run_summaries("jackhu0119", "april2_cifar100")       
-update_wandb_run_summaries("jackhu0119", "cifar10_lamb_wd") 
+
+
 
