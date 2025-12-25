@@ -24,5 +24,8 @@ conda activate torch
 # python -m entry.run1 \
 #   --conf conf/cifar100.conf -o output_100 -M reg=0 lamb=0.2 sweep_name=cifar100_nov max_epochs=200 
 
-python -m entry.run1 \
-  --conf conf/cifar10.conf -o out -M reg=0 lamb_wd=true lamb=0.1  sweep_name=delete max_epochs=2
+#python -m entry.run1 --conf conf/cifar10.conf -o out -M reg=0 lamb_wd=true lamb=0.1 sweep_name=delete max_epochs=2        #for reg=0
+
+python -m entry.run1 --conf conf/cifar10.conf -o output_10 -M reg=10 lamb_wd=true lamb=0.1 sweep_name=cifar10_sam max_epochs=200     # for reg=10
+python -m entry.run1 --conf conf/cifar10.conf -o output_100 -M reg=10 lamb_wd=true lamb=0.1 sweep_name=cifar100_sam max_epochs=200     # for reg=10
+ 
