@@ -362,7 +362,9 @@ def _run_epoch(
                     train_losses = criterion(
                         outputs, targets
                     )  # not average on the batch
-                    train_onlinecumulant.update_losses(train_losses.clone().to(device))
+                    #train_onlinecumulant.update_losses(train_losses.clone().to(device)). this is previous for classification
+                    # Use .view(-1) to force the tensor into a 1D shape,from gemini
+                    train_onlinecumulant.update_losses(train_losses.detach().view(-1).to(device))
 
                     # Calculate regularizer and batch loss
                     if reg == 0 or reg == 10:
