@@ -120,10 +120,11 @@ def excute_pipeline(
         eta.step()
 
         best_metrics = metric_store.get_best_metrics()
-        print(
-            f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc'] * 100:.2f}%, "
-            f"top5-acc={best_metrics['eval/top5_acc'] * 100:.2f}% (epoch={metric_store.best_epoch + 1}), {eta}"
-        )
+
+    #    print(
+     #       f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc'] * 100:.2f}%, "
+      #      f"top5-acc={best_metrics['eval/top5_acc'] * 100:.2f}% (epoch={metric_store.best_epoch + 1}), {eta}"
+       # )
 
 
 def prepare_for_training(conf: ConfigTree, local_rank: int):
