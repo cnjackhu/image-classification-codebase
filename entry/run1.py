@@ -45,8 +45,7 @@ if __name__ == "__main__":
     elif num_classes == 10:
         prefix = "cifar10_"
     else:
-        prefix = "reg_"+ args.conf.data.type_
-        print(prefix)
+        raise ValueError("Unsupported number of classes")
     # Selectively enable models (you can modify this list if needed)
     selected_models = base_models
     sweep_configuration["parameters"]["sweep_model"]["values"] = [

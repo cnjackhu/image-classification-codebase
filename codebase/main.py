@@ -17,14 +17,11 @@ import wandb
 from codebase.config import Args
 from codebase.criterion import CRITERION
 from codebase.data import DATA
-from codebase.engine import evaluate_one_epoch, train_one_epoch, train_reg_epoch, evaluate_reg_epoch
+from codebase.engine import evaluate_one_epoch, train_one_epoch
 from codebase.models import MODEL
 from codebase.optimizer import OPTIMIZER
 from codebase.scheduler import SCHEDULER
-import sys
-# Add the path to where you cloned it (outside your current repo)
-sys.path.append("/ibex/user/xiey0d/hjh/BayesiPy")
-from benchmarks.regression.regression_unified import load_dataset_and_model,make_loaders
+
 # from codebase.torchutils.common import StateCheckPoint
 from codebase.torchutils.common import (
     MetricsStore,
@@ -57,7 +54,6 @@ def excute_pipeline(
     max_epochs: int,
     train_loader: torch.utils.data.DataLoader,
     val_loader: torch.utils.data.DataLoader,
-    test_loader: torch.utils.data.DataLoader,
     states: dict,
     metric_store: MetricsStore,
     output_dir: Path,
@@ -69,13 +65,19 @@ def excute_pipeline(
 
     eta = EstimatedTimeArrival(max_epochs)
     best_loss = 10000
+    wandb.define_metric("eval/top1_acc", summary="max")
+    wandb.define_metric("eval/top5_acc", summary="max")
+    wandb.define_metric("eval/L", summary="min")
+    wandb.define_metric("eval/loss", summary="min")
+    wandb.define_metric("eval/ece", summary="min")
+    wandb.define_metric("eval/mce", summary="min")
     for epoch in range(start_epoch + 1, max_epochs + 1):
         if is_dist_avail_and_init():
             if hasattr(train_loader, "sampler"):
                 train_loader.sampler.set_epoch(epoch)
                 val_loader.sampler.set_epoch(epoch)
 
-        metric_store += train_reg_epoch(
+        metric_store += train_one_epoch(
             reg=reg,
             lamb=lamb,
             epoch=epoch,
@@ -85,7 +87,7 @@ def excute_pipeline(
             **kwargs,
         )
 
-        metric_store += evaluate_reg_epoch(
+        metric_store += evaluate_one_epoch(
             reg=reg,
             lamb=lamb,
             epoch=epoch,
@@ -94,20 +96,6 @@ def excute_pipeline(
             output_dir=output_dir,
             **kwargs,
         )
-
-        test_metrics = evaluate_reg_epoch(
-            reg=reg,
-            lamb=lamb,
-            epoch=epoch,
-            max_norm=max_norm,
-            loader=test_loader,
-            output_dir=output_dir,
-            **kwargs,
-        )
-        # Assuming your existing dict is called 'metrics'
-        test_metrics = {k.replace("eval/", "test/"): v for k, v in test_metrics.items()}
-        metric_store += test_metrics
-
         # using wandb to log,
         dic = metric_store.get_last_metrics()
         wandb.log(dic)
@@ -120,11 +108,10 @@ def excute_pipeline(
         eta.step()
 
         best_metrics = metric_store.get_best_metrics()
-
-    #    print(
-     #       f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc'] * 100:.2f}%, "
-      #      f"top5-acc={best_metrics['eval/top5_acc'] * 100:.2f}% (epoch={metric_store.best_epoch + 1}), {eta}"
-       # )
+        print(
+            f"Epoch={epoch:04d} complete, best val top1-acc={best_metrics['eval/top1_acc'] * 100:.2f}%, "
+            f"top5-acc={best_metrics['eval/top5_acc'] * 100:.2f}% (epoch={metric_store.best_epoch + 1}), {eta}"
+        )
 
 
 def prepare_for_training(conf: ConfigTree, local_rank: int):
@@ -206,82 +193,6 @@ def prepare_for_training(conf: ConfigTree, local_rank: int):
         model,
         train_loader,
         val_loader,
-        criterion,
-        optimizer,
-        scheduler,
-        metric_store,
-        states,
-    )
-
-
-def prepare_for_training_reg(conf: ConfigTree, local_rank: int):
-    # 1. Load Regression Datasets and Models
-    # Uses the specialized interface for Airline, Year, or Taxi datasets
-    dataset_name = conf.get("data.type_") 
-    device = get_device()
-    
-    # Use float32 for regression to maintain precision for continuous targets
-    dtype = torch.float64
-    
-    # Retrieve normalized datasets, model architecture, and target statistics
-    (train_ds, test_ds, val_ds), model, y_mean, y_std = load_dataset_and_model(
-        dataset_name, device, dtype
-    )
-
-    # Wrap Datasets into DataLoaders using the provided make_loaders interface
-    # This standardizes batching and shuffling across train, test, and val splits
-    train_loader, test_loader, val_loader = make_loaders(
-        train_ds, 
-        test_ds, 
-        val_ds, 
-        batch_size=conf.get("data.batch_size")
-    )
-
-    # 2. Define Loss Function
-    # Mean Squared Error (MSE) is the standard objective for these regression tasks
-    criterion = torch.nn.MSELoss()
-
-    # 3. Optimizer Configuration
-    optimizer_config: dict = conf.get("optimizer")
-    basic_bs = optimizer_config.pop("basic_bs")
-    
-    # Linear scaling of learning rate based on total batch size across GPUs
-    optimizer_config["lr"] = optimizer_config["lr"] * (
-        conf.get("data.batch_size") * world_size() / basic_bs
-    )
-    
-    # Build the chosen optimizer (e.g., Adam, SGD) from the project registry
-    optimizer = OPTIMIZER.build_from(
-        optimizer_config, dict(params=model.named_parameters())
-    )
-
-    # 4. Learning Rate Scheduler
-    # Handles learning rate decay relative to the optimizer instance
-    scheduler = SCHEDULER.build_from(conf.get("scheduler"), dict(optimizer=optimizer))
-
-    # 5. Metrics Storage
-    # Primary metric is set to MSE to track regression performance
-    metric_store = MetricsStore(dominant_metric_name="eval/mse")
-
-    # 6. State Management
-    # Storing y_stats is critical for reversing Z-score normalization during evaluation
-    states = dict(
-        model=unwarp_module(model), 
-        optimizer=optimizer, 
-        scheduler=scheduler,
-        y_stats={"mean": y_mean, "std": y_std}
-    )
-
-    # 7. Distributed Training Setup (DDP)
-    # Required for multi-GPU execution on Ibex nodes
-    if is_dist_avail_and_init():
-        model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank])
-
-    return (
-        model,
-        train_loader,
-        val_loader,
-        test_loader,
         criterion,
         optimizer,
         scheduler,
@@ -374,30 +285,16 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
     # Make sure the directory exists
     save_path.mkdir(parents=True, exist_ok=True)
     _init(local_rank=local_rank, ngpus_per_node=ngpus_per_node, args=args)
-    if conf.task == 'classification':
-        (
-            model,
-            train_loader,
-            val_loader,
-            criterion,
-            optimizer,
-            scheduler,
-            metric_store,
-            states,
-        ) = prepare_for_training(conf, local_rank)
-
-    if conf.task == "regression":
-        (
-            model,
-            train_loader,
-            val_loader,
-            test_loader,
-            criterion,
-            optimizer,
-            scheduler,
-            metric_store,
-            states,
-        ) = prepare_for_training_reg(conf, local_rank)
+    (
+        model,
+        train_loader,
+        val_loader,
+        criterion,
+        optimizer,
+        scheduler,
+        metric_store,
+        states,
+    ) = prepare_for_training(conf, local_rank)
 
     excute_pipeline(
         only_evaluate=conf.get_bool("only_evaluate"),
@@ -408,7 +305,6 @@ def main_worker(local_rank: int, ngpus_per_node: int, args: Args, conf: ConfigTr
         max_epochs=conf.get_int("max_epochs"),
         train_loader=train_loader,
         val_loader=val_loader,
-        test_loader=test_loader,
         # state_ckpt=saver,
         states=states,
         metric_store=metric_store,
